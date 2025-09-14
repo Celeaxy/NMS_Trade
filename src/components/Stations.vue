@@ -18,11 +18,13 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { Station } from '../station';
 import { getLocalStorageItem, setLocalStorageItem } from '../storage';
 
 const stations = ref<Station[]>([]);
 const newStationName = ref('');
+const router = useRouter();
 
 onMounted(() => {
   stations.value = getLocalStorageItem<Station[]>('stations') ?? [];
@@ -35,6 +37,7 @@ function addStation() {
   stations.value.push(newStation);
   setLocalStorageItem('stations', stations.value);
   newStationName.value = '';
+  router.push(`/edit-station/${newStation.id}`);
 }
 
 function removeStation(id: number) {
