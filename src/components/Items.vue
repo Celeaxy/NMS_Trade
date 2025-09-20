@@ -34,7 +34,7 @@ async function fetchItemsIfNeeded() {
   if (!userToken) return;
   let cached = getItemsCache();
   if (!cached) {
-    const res = await fetch(`/api/items?userToken=${userToken}`);
+  const res = await fetch(`https://nms-trade-backend.onrender.com/api/items?userToken=${userToken}`);
     cached = await res.json();
   if (cached) setItemsCache(cached);
   }
@@ -57,7 +57,7 @@ async function addItem() {
     id: maxId + 1,
     value: newItemValue.value,
   };
-  await fetch('/api/items', {
+  await fetch('https://nms-trade-backend.onrender.com/api/items', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ ...newItem, userToken })
@@ -72,7 +72,7 @@ async function addItem() {
 
 async function removeItem(id: number) {
   if (!userToken) return;
-  await fetch(`/api/items/${id}?userToken=${userToken}`, { method: 'DELETE' });
+  await fetch(`https://nms-trade-backend.onrender.com/api/items/${id}?userToken=${userToken}`, { method: 'DELETE' });
   clearItemsCache();
   await fetchItemsIfNeeded();
 }

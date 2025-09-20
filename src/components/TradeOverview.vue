@@ -277,9 +277,9 @@ async function fetchDataIfNeeded() {
   let demandsArr = getDemandsCache();
   if (!itemsArr || !stationsArr || !demandsArr) {
     const [itemsRes, stationsRes, demandsRes] = await Promise.all([
-      fetch(`/api/items?userToken=${userToken}`),
-      fetch(`/api/stations?userToken=${userToken}`),
-      fetch(`/api/demands?userToken=${userToken}`)
+  fetch(`https://nms-trade-backend.onrender.com/api/items?userToken=${userToken}`),
+  fetch(`https://nms-trade-backend.onrender.com/api/stations?userToken=${userToken}`),
+  fetch(`https://nms-trade-backend.onrender.com/api/demands?userToken=${userToken}`)
     ]);
     itemsArr = await itemsRes.json();
     stationsArr = await stationsRes.json();

@@ -98,9 +98,9 @@ const valueInput = ref<HTMLInputElement | null>(null);
 async function fetchAll() {
   if (!userToken) return;
   const [stationsRes, demandsRes, itemsRes] = await Promise.all([
-    fetch(`/api/stations?userToken=${userToken}`),
-    fetch(`/api/demands?userToken=${userToken}`),
-    fetch(`/api/items?userToken=${userToken}`)
+  fetch(`https://nms-trade-backend.onrender.com/api/stations?userToken=${userToken}`),
+  fetch(`https://nms-trade-backend.onrender.com/api/demands?userToken=${userToken}`),
+  fetch(`https://nms-trade-backend.onrender.com/api/items?userToken=${userToken}`)
   ]);
   const stationsArr = await stationsRes.json();
   const demandsArr = await demandsRes.json();
@@ -131,9 +131,9 @@ async function fetchAllIfNeeded() {
   let itemsArr = getItemsCache();
   if (!stationsArr || !demandsArr || !itemsArr) {
     const [stationsRes, demandsRes, itemsRes] = await Promise.all([
-      fetch(`/api/stations?userToken=${userToken}`),
-      fetch(`/api/demands?userToken=${userToken}`),
-      fetch(`/api/items?userToken=${userToken}`)
+  fetch(`https://nms-trade-backend.onrender.com/api/stations?userToken=${userToken}`),
+  fetch(`https://nms-trade-backend.onrender.com/api/demands?userToken=${userToken}`),
+  fetch(`https://nms-trade-backend.onrender.com/api/items?userToken=${userToken}`)
     ]);
     stationsArr = await stationsRes.json();
     demandsArr = await demandsRes.json();
@@ -191,7 +191,7 @@ async function addItemToStation() {
     const newId = items.value.length ? Math.max(...items.value.map((i) => i.id)) + 1 : 1;
     const baseValue = newDemand.value !== 0 ? newItemValue.value / (1 + newDemand.value / 100) : newItemValue.value;
     item = { id: newId, name: itemFilter.value.trim(), value: Math.round(baseValue * 100) / 100 };
-    await fetch('/api/items', {
+  await fetch('https://nms-trade-backend.onrender.com/api/items', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...item, userToken })
@@ -207,7 +207,7 @@ async function addItemToStation() {
     item = items.value.find((i) => i.id === selectedItemId.value);
   }
   if (!item) return;
-  await fetch('/api/demands', {
+  await fetch('https://nms-trade-backend.onrender.com/api/demands', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ station_id: station.value.id, item_id: item.id, demand: newDemand.value, userToken })
@@ -226,7 +226,7 @@ async function addItemToStation() {
 
 async function removeItem(itemId: number) {
   if (!station.value || !userToken) return;
-  await fetch(`/api/demands/${station.value.id}/${itemId}?userToken=${userToken}`, { method: 'DELETE' });
+  await fetch(`https://nms-trade-backend.onrender.com/api/demands/${station.value.id}/${itemId}?userToken=${userToken}`, { method: 'DELETE' });
   clearDemandsCache();
   clearStationsCache();
   await fetchAllIfNeeded();
@@ -235,7 +235,7 @@ async function removeItem(itemId: number) {
 
 async function saveStation() {
   if (!station.value || !userToken) return;
-  await fetch(`/api/stations/${station.value.id}?userToken=${userToken}`, {
+  await fetch(`https://nms-trade-backend.onrender.com/api/stations/${station.value.id}?userToken=${userToken}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name: stationName.value })
