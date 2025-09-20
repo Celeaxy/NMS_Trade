@@ -1,4 +1,3 @@
-
 <template>
   <div>
     <h1>Stations</h1>
@@ -17,31 +16,60 @@
 </template>
 
 <script setup lang="ts">
+
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { Station } from '../station';
-import { getLocalStorageItem, setLocalStorageItem } from '../storage';
+import { getStationsCache, setStationsCache, clearStationsCache } from '../cache';
 
-const stations = ref<Station[]>([]);
+
+
+const stations = ref<Station[]>(getStationsCache()?.map((s: any) => new Station(s.name, s.id)) ?? []);
 const newStationName = ref('');
 const router = useRouter();
+const userToken = localStorage.getItem('user_token');
+
+
+
+async function fetchStationsIfNeeded() {
+  if (!userToken) return;
+  let cached = getStationsCache();
+  if (!cached) {
+    const res = await fetch(`/api/stations?userToken=${userToken}`);
+    cached = await res.json();
+    if (cached) setStationsCache(cached);
+  }
+  stations.value = (cached ?? []).map((s: any) => new Station(s.name, s.id));
+}
+
 
 onMounted(() => {
-  stations.value = getLocalStorageItem<Station[]>('stations') ?? [];
+  fetchStationsIfNeeded();
 });
 
-function addStation() {
-  if (!newStationName.value.trim()) return;
-  const newStation = new Station(newStationName.value.trim(),
-    stations.value.length ? Math.max(...stations.value.map(s => s.id)) + 1 : 1);
-  stations.value.push(newStation);
-  setLocalStorageItem('stations', stations.value);
+
+
+async function addStation() {
+  if (!newStationName.value.trim() || !userToken) return;
+  const maxId = stations.value.length ? Math.max(...stations.value.map((s) => s.id)) : 0;
+  const newStation = { id: maxId + 1, name: newStationName.value.trim(), userToken };
+  await fetch('/api/stations', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(newStation)
+  });
+  clearStationsCache();
+  await fetchStationsIfNeeded();
   newStationName.value = '';
   router.push(`/edit-station/${newStation.id}`);
 }
 
-function removeStation(id: number) {
-  stations.value = stations.value.filter(s => s.id !== id);
-  setLocalStorageItem('stations', stations.value);
+
+
+async function removeStation(id: number) {
+  if (!userToken) return;
+  await fetch(`/api/stations/${id}?userToken=${userToken}`, { method: 'DELETE' });
+  clearStationsCache();
+  await fetchStationsIfNeeded();
 }
 </script>

@@ -1,4 +1,3 @@
-
 <template>
   <div>
     <h1>Items</h1>
@@ -17,33 +16,64 @@
 </template>
 
 <script setup lang="ts">
+
 import { ref, onMounted } from 'vue';
 import type { Item } from '../item';
-import { getLocalStorageItem, setLocalStorageItem } from '../storage';
+import { getItemsCache, setItemsCache, clearItemsCache } from '../cache';
 
-const items = ref<Item[]>([]);
+
+
+const items = ref<Item[]>(getItemsCache() ?? []);
 const newItemName = ref('');
 const newItemValue = ref(0);
+const userToken = localStorage.getItem('user_token');
+
+
+
+async function fetchItemsIfNeeded() {
+  if (!userToken) return;
+  let cached = getItemsCache();
+  if (!cached) {
+    const res = await fetch(`/api/items?userToken=${userToken}`);
+    cached = await res.json();
+  if (cached) setItemsCache(cached);
+  }
+  items.value = cached ?? [];
+}
+
 
 onMounted(() => {
-  items.value = getLocalStorageItem<Item[]>('items') ?? [];
+  fetchItemsIfNeeded();
 });
 
-function addItem() {
-  if (!newItemName.value.trim()) return;
+
+
+async function addItem() {
+  if (!newItemName.value.trim() || !userToken) return;
+  // Find max id on backend
+  const maxId = items.value.length ? Math.max(...items.value.map((i) => i.id)) : 0;
   const newItem: Item = {
     name: newItemName.value.trim(),
-    id: items.value.length ? Math.max(...items.value.map(i => i.id)) + 1 : 1,
-    value: newItemValue.value
+    id: maxId + 1,
+    value: newItemValue.value,
   };
-  items.value.push(newItem);
-  setLocalStorageItem('items', items.value);
+  await fetch('/api/items', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...newItem, userToken })
+  });
+  clearItemsCache();
+  await fetchItemsIfNeeded();
   newItemName.value = '';
   newItemValue.value = 0;
 }
 
-function removeItem(id: number) {
-  items.value = items.value.filter(i => i.id !== id);
-  setLocalStorageItem('items', items.value);
+
+
+async function removeItem(id: number) {
+  if (!userToken) return;
+  await fetch(`/api/items/${id}?userToken=${userToken}`, { method: 'DELETE' });
+  clearItemsCache();
+  await fetchItemsIfNeeded();
 }
 </script>

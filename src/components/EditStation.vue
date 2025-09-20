@@ -22,7 +22,7 @@
           ref="itemInput"
           placeholder="Search or select item..."
           @focus="dropdownOpen = true"
-          @blur="setTimeout(() => dropdownOpen = false, 200)"
+          @blur="setTimeout(() => (dropdownOpen = false), 200)"
           @keydown.tab.prevent="handleTabSelect"
         />
         <ul v-if="dropdownOpen" class="dropdown-list">
@@ -34,7 +34,13 @@
           >
             {{ item.name }} (Value: {{ item.value }})
           </li>
-          <li v-if="filteredAvailableItems.length === 0" @mousedown.prevent="selectItem(-1)" :class="{ selected: selectedItemId === -1 }">Add new item...</li>
+          <li
+            v-if="filteredAvailableItems.length === 0"
+            @mousedown.prevent="selectItem(-1)"
+            :class="{ selected: selectedItemId === -1 }"
+          >
+            Add new item...
+          </li>
         </ul>
       </div>
       <div v-if="selectedItemId === -1" class="new-item-fields">
@@ -42,7 +48,13 @@
       </div>
       <label>
         Demand (%):
-        <input v-model.number="newDemand" type="number" step="any" placeholder="Demand (%)" ref="demandInput" />
+        <input
+          v-model.number="newDemand"
+          type="number"
+          step="any"
+          placeholder="Demand (%)"
+          ref="demandInput"
+        />
       </label>
       <button type="submit">Add Item</button>
     </form>
@@ -58,7 +70,13 @@ import { ref, onMounted, computed, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { Station } from '../station';
 import type { Item } from '../item';
-import { getLocalStorageItem, setLocalStorageItem } from '../storage';
+
+import {
+  getStationsCache, setStationsCache, clearStationsCache,
+  getItemsCache, setItemsCache, clearItemsCache,
+  getDemandsCache, setDemandsCache, clearDemandsCache
+} from '../cache';
+
 
 const route = useRoute();
 const router = useRouter();
@@ -67,6 +85,7 @@ const stations = ref<Station[]>([]);
 const station = ref<Station | null>(null);
 const stationName = ref('');
 const items = ref<Item[]>([]);
+const userToken = localStorage.getItem('user_token');
 const selectedItemId = ref<number | null>(null);
 const newDemand = ref(0);
 const newItemValue = ref(0);
@@ -75,48 +94,127 @@ const itemInput = ref<HTMLInputElement | null>(null);
 const demandInput = ref<HTMLInputElement | null>(null);
 const valueInput = ref<HTMLInputElement | null>(null);
 
-onMounted(() => {
-  stations.value = getLocalStorageItem<Station[]>('stations') ?? [];
-  station.value = stations.value.find(s => s.id === stationId) ?? null;
+
+async function fetchAll() {
+  if (!userToken) return;
+  const [stationsRes, demandsRes, itemsRes] = await Promise.all([
+    fetch(`/api/stations?userToken=${userToken}`),
+    fetch(`/api/demands?userToken=${userToken}`),
+    fetch(`/api/items?userToken=${userToken}`)
+  ]);
+  const stationsArr = await stationsRes.json();
+  const demandsArr = await demandsRes.json();
+  const itemsArr = await itemsRes.json();
+  const itemsMap = new Map<number, any>();
+  for (const item of itemsArr) itemsMap.set(item.id, item);
+  const stationMap = new Map<number, Station>();
+  for (const s of stationsArr) stationMap.set(s.id, new Station(s.name, s.id));
+  for (const d of demandsArr) {
+    const st = stationMap.get(d.station_id);
+    const item = itemsMap.get(d.item_id);
+    if (st && item) {
+      st.items.push({ item, demand: d.demand });
+    }
+  }
+  stations.value = Array.from(stationMap.values());
+  station.value = stations.value.find((s) => s.id === stationId) ?? null;
   if (station.value) {
     stationName.value = station.value.name;
   }
-  items.value = getLocalStorageItem<Item[]>('items') ?? [];
+  items.value = itemsArr;
+}
+
+async function fetchAllIfNeeded() {
+  if (!userToken) return;
+  let stationsArr = getStationsCache();
+  let demandsArr = getDemandsCache();
+  let itemsArr = getItemsCache();
+  if (!stationsArr || !demandsArr || !itemsArr) {
+    const [stationsRes, demandsRes, itemsRes] = await Promise.all([
+      fetch(`/api/stations?userToken=${userToken}`),
+      fetch(`/api/demands?userToken=${userToken}`),
+      fetch(`/api/items?userToken=${userToken}`)
+    ]);
+    stationsArr = await stationsRes.json();
+    demandsArr = await demandsRes.json();
+    itemsArr = await itemsRes.json();
+    if (stationsArr) setStationsCache(stationsArr);
+    if (demandsArr) setDemandsCache(demandsArr);
+    if (itemsArr) setItemsCache(itemsArr);
+  }
+  // Defensive: fallback to empty arrays if still null
+  stationsArr = stationsArr ?? [];
+  demandsArr = demandsArr ?? [];
+  itemsArr = itemsArr ?? [];
+  const itemsMap = new Map<number, any>();
+  for (const item of itemsArr) itemsMap.set(item.id, item);
+  const stationMap = new Map<number, Station>();
+  for (const s of stationsArr) stationMap.set(s.id, new Station(s.name, s.id));
+  for (const d of demandsArr) {
+    const st = stationMap.get(d.station_id);
+    const item = itemsMap.get(d.item_id);
+    if (st && item) {
+      st.items.push({ item, demand: d.demand });
+    }
+  }
+  stations.value = Array.from(stationMap.values());
+  station.value = stations.value.find((s) => s.id === stationId) ?? null;
+  if (station.value) {
+    stationName.value = station.value.name;
+  }
+  items.value = itemsArr;
+}
+
+onMounted(() => {
+  fetchAllIfNeeded();
 });
 
 const itemFilter = ref('');
 const availableItems = computed(() => {
   if (!station.value) return [];
-  const usedIds = station.value.items.map(ti => ti.item.id);
-  return items.value.filter(item => !usedIds.includes(item.id));
+  const usedIds = station.value.items.map((ti) => ti.item.id);
+  return items.value.filter((item) => !usedIds.includes(item.id));
 });
 const filteredAvailableItems = computed(() => {
   if (!itemFilter.value.trim()) return availableItems.value;
-  return availableItems.value.filter(item => item.name.toLowerCase().includes(itemFilter.value.trim().toLowerCase()));
+  return availableItems.value.filter((item) =>
+    item.name.toLowerCase().includes(itemFilter.value.trim().toLowerCase())
+  );
 });
 
-function addItemToStation() {
-  if (!station.value || selectedItemId.value === null) return;
+
+async function addItemToStation() {
+  if (!station.value || selectedItemId.value === null || !userToken) return;
   let item: Item | undefined;
   if (selectedItemId.value === -1) {
-    // Add new item
     if (!itemFilter.value.trim()) return;
-    const newId = items.value.length ? Math.max(...items.value.map(i => i.id)) + 1 : 1;
-    // Calculate base value from local value and demand
-    const baseValue = newDemand.value !== 0
-      ? newItemValue.value / (1 + newDemand.value / 100)
-      : newItemValue.value;
+    const newId = items.value.length ? Math.max(...items.value.map((i) => i.id)) + 1 : 1;
+    const baseValue = newDemand.value !== 0 ? newItemValue.value / (1 + newDemand.value / 100) : newItemValue.value;
     item = { id: newId, name: itemFilter.value.trim(), value: Math.round(baseValue * 100) / 100 };
-    items.value.push(item);
-    setLocalStorageItem('items', items.value);
+    await fetch('/api/items', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...item, userToken })
+    });
     itemFilter.value = '';
     newItemValue.value = 0;
+    clearItemsCache();
+    clearStationsCache();
+    clearDemandsCache();
+    await fetchAllIfNeeded();
+    item = items.value.find((i) => i.id === newId);
   } else {
-    item = items.value.find(i => i.id === selectedItemId.value);
+    item = items.value.find((i) => i.id === selectedItemId.value);
   }
   if (!item) return;
-  station.value.items.push({ item, demand: newDemand.value });
-  setLocalStorageItem('stations', stations.value);
+  await fetch('/api/demands', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ station_id: station.value.id, item_id: item.id, demand: newDemand.value, userToken })
+  });
+  clearDemandsCache();
+  clearStationsCache();
+  await fetchAllIfNeeded();
   selectedItemId.value = null;
   newDemand.value = 0;
   nextTick(() => {
@@ -125,23 +223,32 @@ function addItemToStation() {
   });
 }
 
-function removeItem(itemId: number) {
-  if (!station.value) return;
-  station.value.items = station.value.items.filter(ti => ti.item.id !== itemId);
-  setLocalStorageItem('stations', stations.value);
+
+async function removeItem(itemId: number) {
+  if (!station.value || !userToken) return;
+  await fetch(`/api/demands/${station.value.id}/${itemId}?userToken=${userToken}`, { method: 'DELETE' });
+  clearDemandsCache();
+  clearStationsCache();
+  await fetchAllIfNeeded();
 }
 
-function saveStation() {
-  if (!station.value) return;
-  station.value.name = stationName.value;
-  setLocalStorageItem('stations', stations.value);
+
+async function saveStation() {
+  if (!station.value || !userToken) return;
+  await fetch(`/api/stations/${station.value.id}?userToken=${userToken}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: stationName.value })
+  });
+  clearStationsCache();
+  await fetchAllIfNeeded();
   router.push('/stations');
 }
 
 function selectItem(id: number) {
   selectedItemId.value = id;
   if (id !== -1) {
-    const item = availableItems.value.find(i => i.id === id);
+    const item = availableItems.value.find((i) => i.id === id);
     itemFilter.value = item ? item.name : '';
     nextTick(() => {
       demandInput.value?.focus();
@@ -160,6 +267,10 @@ function handleTabSelect() {
   } else {
     selectItem(-1);
   }
+}
+
+function closeDropdownWithDelay() {
+  setTimeout(() => (dropdownOpen.value = false), 200);
 }
 </script>
 
