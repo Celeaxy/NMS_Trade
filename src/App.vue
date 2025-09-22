@@ -88,14 +88,7 @@ function createNewToken() {
         </div>
       </nav>
       <main class="main-content">
-        <Suspense>
-          <template #default>
-            <RouterView />
-          </template>
-          <template #fallback>
-            <div class="loading">Loading view...</div>
-          </template>
-        </Suspense>
+        <RouterView />
       </main>
     </div>
   </div>
