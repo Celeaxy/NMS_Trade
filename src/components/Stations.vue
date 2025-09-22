@@ -16,60 +16,29 @@
 </template>
 
 <script setup lang="ts">
-
-import { ref, onMounted } from 'vue';
+import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { Station } from '../station';
-import { getStationsCache, setStationsCache, clearStationsCache } from '../cache';
+import type { Station } from '../types';
+import { StationAPI } from '../crud';
 
+const stations = ref<Station[]>(
+  await StationAPI.fetch()
+);
 
-
-const stations = ref<Station[]>(getStationsCache()?.map((s: any) => new Station(s.name, s.id)) ?? []);
 const newStationName = ref('');
 const router = useRouter();
-const userToken = localStorage.getItem('user_token');
-
-
-
-async function fetchStationsIfNeeded() {
-  if (!userToken) return;
-  let cached = getStationsCache();
-  if (!cached) {
-  const res = await fetch(`https://nms-trade-backend.onrender.com/api/stations?userToken=${userToken}`);
-    cached = await res.json();
-    if (cached) setStationsCache(cached);
-  }
-  stations.value = (cached ?? []).map((s: any) => new Station(s.name, s.id));
-}
-
-
-onMounted(() => {
-  fetchStationsIfNeeded();
-});
-
-
 
 async function addStation() {
-  if (!newStationName.value.trim() || !userToken) return;
-  const maxId = stations.value.length ? Math.max(...stations.value.map((s) => s.id)) : 0;
-  const newStation = { id: maxId + 1, name: newStationName.value.trim(), userToken };
-  await fetch('https://nms-trade-backend.onrender.com/api/stations', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(newStation)
-  });
-  clearStationsCache();
-  await fetchStationsIfNeeded();
-  newStationName.value = '';
+  const name = newStationName.value.trim()
+  if (!name) return;
+
+  const newStation = await StationAPI.create(name)
+
   router.push(`/edit-station/${newStation.id}`);
 }
 
-
-
 async function removeStation(id: number) {
-  if (!userToken) return;
-  await fetch(`https://nms-trade-backend.onrender.com/api/stations/${id}?userToken=${userToken}`, { method: 'DELETE' });
-  clearStationsCache();
-  await fetchStationsIfNeeded();
+  await StationAPI.delete(id)
+  stations.value = await StationAPI.fetch()
 }
 </script>
