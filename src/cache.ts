@@ -1,43 +1,53 @@
-// src/cache.ts
-import { ref } from 'vue';
+export class Cache<T> {
+  private data: T | null = null;
+  private timestamp: number = 0;
+  private ttl: number; // time to live in milliseconds
 
-// Simple in-memory cache for items, stations, and demands
-const itemsCache = ref<any[] | null>(null);
-const stationsCache = ref<any[] | null>(null);
-const demandsCache = ref<any[] | null>(null);
+  constructor(ttl: number) {
+    this.ttl = ttl;
+  }
 
-export function getItemsCache() {
-  return itemsCache.value;
-}
-export function setItemsCache(items: any[]) {
-  itemsCache.value = items;
-}
-export function clearItemsCache() {
-  itemsCache.value = null;
-}
+  isValid(): boolean {
+    return this.data !== null && Date.now() - this.timestamp < this.ttl;
+  }
 
-export function getStationsCache() {
-  return stationsCache.value;
-}
-export function setStationsCache(stations: any[]) {
-  stationsCache.value = stations;
-}
-export function clearStationsCache() {
-  stationsCache.value = null;
-}
+  get(): T | null {
+    if (Date.now() - this.timestamp < this.ttl) {
+      return this.data;
+    }
+    this.clear();
+    return null;
+  }
 
-export function getDemandsCache() {
-  return demandsCache.value;
-}
-export function setDemandsCache(demands: any[]) {
-  demandsCache.value = demands;
-}
-export function clearDemandsCache() {
-  demandsCache.value = null;
+  set(data: T) {
+    this.data = data;
+    this.timestamp = Date.now();
+  }
+
+  clear() {
+    this.data = null;
+    this.timestamp = 0;
+  }
 }
 
-export function clearAllCache() {
-  clearItemsCache();
-  clearStationsCache();
-  clearDemandsCache();
+export type CachedFunction<TArgs extends unknown[], TResult> = {(...args: TArgs): Promise<TResult>;  clear: () => void };
+
+export function cached<TArgs extends unknown[], TResult>(
+  fn: (...args: TArgs) => Promise<TResult>,
+  ttl: number
+): CachedFunction<TArgs, TResult> {
+  const cache = new Cache<TResult>(ttl);
+
+  const wrapped = async (...args: TArgs): Promise<TResult> => {
+    const cached = cache.get();
+    if (cached !== null) return cached;
+
+    const result = await fn(...args);
+    cache.set(result);
+    return result;
+  };
+
+  wrapped.clear = () => cache.clear();
+
+  return wrapped;
 }
