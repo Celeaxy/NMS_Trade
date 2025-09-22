@@ -2,17 +2,14 @@
 import { RouterView, RouterLink } from 'vue-router';
 import { onMounted, ref } from 'vue';
 
-
 function generateUserToken() {
   // Generate a random 8-character hexadecimal string
   return Array.from(crypto.getRandomValues(new Uint8Array(4)))
-    .map(b => b.toString(16).padStart(2, '0'))
+    .map((b) => b.toString(16).padStart(2, '0'))
     .join('');
 }
 
 const userToken = ref<string | null>(null);
-
-
 
 function isHexToken(str: string) {
   return /^[0-9a-fA-F]{8}$/.test(str);
@@ -70,8 +67,10 @@ function createNewToken() {
           <button @click="submitToken">Submit</button>
         </div>
         <div v-if="dialogMode === 'create'" class="token-create-section">
-          <div>Your new token: <b>{{ userToken }}</b></div>
-          <div style="margin-top:1rem;">
+          <div>
+            Your new token: <b>{{ userToken }}</b>
+          </div>
+          <div style="margin-top: 1rem">
             <button @click="showTokenPrompt = false">Continue</button>
           </div>
         </div>
@@ -83,11 +82,20 @@ function createNewToken() {
         <RouterLink to="/stations" active-class="active">Stations</RouterLink>
         <RouterLink to="/items" active-class="active">Items</RouterLink>
         <div class="user-token-bar">
-          <span>User Token: <code>{{ userToken }}</code></span>
+          <span
+            >User Token: <code>{{ userToken }}</code></span
+          >
         </div>
       </nav>
       <main class="main-content">
-        <RouterView />
+        <Suspense>
+          <template #default>
+            <RouterView />
+          </template>
+          <template #fallback>
+            <div class="loading">Loading view...</div>
+          </template>
+        </Suspense>
       </main>
     </div>
   </div>
@@ -144,48 +152,12 @@ function createNewToken() {
 }
 </style>
 
-/* Dialog styles */
-.token-dialog-backdrop {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(0,0,0,0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-.token-dialog {
-  background: #fff;
-  padding: 2rem 2.5rem;
-  border-radius: 10px;
-  box-shadow: 0 2px 16px rgba(0,0,0,0.2);
-  min-width: 320px;
-  text-align: center;
-}
-.token-dialog button {
-  margin: 0.5rem 0.5rem 1rem 0.5rem;
-  padding: 0.5rem 1.2rem;
-  font-size: 1rem;
-  border-radius: 6px;
-  border: none;
-  background: #1976d2;
-  color: #fff;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-.token-dialog button:hover {
-  background: #125ea2;
-}
-.token-input-section, .token-create-section {
-  margin-top: 1rem;
-}
-.token-input-section input {
-  padding: 0.4rem 0.8rem;
-  font-size: 1rem;
-  border-radius: 4px;
-  border: 1px solid #ccc;
-  margin-right: 0.5rem;
-}
+/* Dialog styles */ .token-dialog-backdrop { position: fixed; top: 0; left: 0; width: 100vw; height:
+100vh; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center;
+z-index: 1000; } .token-dialog { background: #fff; padding: 2rem 2.5rem; border-radius: 10px;
+box-shadow: 0 2px 16px rgba(0,0,0,0.2); min-width: 320px; text-align: center; } .token-dialog button
+{ margin: 0.5rem 0.5rem 1rem 0.5rem; padding: 0.5rem 1.2rem; font-size: 1rem; border-radius: 6px;
+border: none; background: #1976d2; color: #fff; cursor: pointer; transition: background 0.2s; }
+.token-dialog button:hover { background: #125ea2; } .token-input-section, .token-create-section {
+margin-top: 1rem; } .token-input-section input { padding: 0.4rem 0.8rem; font-size: 1rem;
+border-radius: 4px; border: 1px solid #ccc; margin-right: 0.5rem; }
