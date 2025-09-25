@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { RouterView, RouterLink } from 'vue-router';
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
+// Vuetify components
+import { VApp, VAppBar, VAppBarNavIcon, VDivider, VAppBarTitle, VNavigationDrawer, VList, VListItem, VBtn, VSpacer, VMain, VDialog, VCard, VCardTitle, VCardText, VCardActions, VTextField } from 'vuetify/components';
+import { useDisplay } from 'vuetify'
 
 function generateUserToken() {
   // Generate a random 8-character hexadecimal string
@@ -51,133 +54,78 @@ function createNewToken() {
   // Keep dialog open so user can see/copy token
 }
 
-const showNavbar = ref(true);
-const isMobile = ref(false);
 
-function handleResize() {
-  isMobile.value = window.innerWidth <= 768;
-  if (!isMobile.value) showNavbar.value = true;
+
+const {smAndDown} = useDisplay()
+const isMobile = computed(() => smAndDown.value)
+
+const drawer = ref(!isMobile.value);
+
+function toggleDrawer() {
+  if (isMobile.value) {
+    drawer.value = !drawer.value;
+  }
 }
-
-onMounted(() => {
-  handleResize();
-  window.addEventListener('resize', handleResize);
-});
 </script>
 
 <template>
-  <div>
-    <button class="navbar-toggle" v-if="isMobile" @click="showNavbar = !showNavbar">
-      <span v-if="showNavbar">✖</span>
-      <span v-else>☰</span>
-    </button>
-    <div class="layout">
-      <nav class="navbar" :class="{ mobile: isMobile, hidden: isMobile && !showNavbar }">
-        <RouterLink to="/" active-class="active">Trading</RouterLink>
-        <RouterLink to="/stations" active-class="active">Stations</RouterLink>
-        <RouterLink to="/items" active-class="active">Items</RouterLink>
-        <div class="user-token-bar">
-          <span
-            >User Token: <code>{{ userToken }}</code></span
-          >
-        </div>
-      </nav>
-      <main class="main-content">
-        <RouterView />
-      </main>
-    </div>
-  </div>
+  <v-app>
+    <v-app-bar app color="primary" dark>
+      <v-app-bar-nav-icon @click="toggleDrawer" class="d-md-flex" v-if="isMobile"></v-app-bar-nav-icon>
+      <v-app-bar-title>NMS Trade</v-app-bar-title>
+    </v-app-bar>
+    <v-navigation-drawer v-model="drawer" app class="d-md-flex" :temporary="isMobile" :permanent="!isMobile">
+      <v-list nav>
+        <v-list-item>
+          <RouterLink to="/" @click.native="toggleDrawer">Trading</RouterLink>
+        </v-list-item>
+        <v-list-item>
+          <RouterLink to="/stations" @click.native="toggleDrawer">Stations</RouterLink>
+        </v-list-item>
+        <v-list-item>
+          <RouterLink to="/items" @click.native="toggleDrawer">Items</RouterLink>
+        </v-list-item>
+        <v-divider/>
+        <v-list-item>
+          <div class="user-token-bar v-user-token-bar">
+            <span>User Token: <code>{{ userToken }}</code></span>
+          </div>
+        </v-list-item>
+      </v-list>
+    </v-navigation-drawer>
+    <v-main>
+      <RouterView />
+    </v-main>
+    <v-dialog v-model="showTokenPrompt" persistent max-width="400">
+      <v-card>
+        <v-card-title>User Token</v-card-title>
+        <v-card-text>
+          <v-text-field v-model="tokenInput" label="Enter your user token" type="password" />
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn color="primary" @click="submitToken">Save</v-btn>
+          <v-btn variant="text" @click="showTokenPrompt = false">Cancel</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+  </v-app>
 </template>
 
 <style scoped>
-.layout {
-  display: flex;
-  min-height: 100vh;
-}
 
-.navbar {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  background: #f5f5f5;
-  padding: 2rem 1rem;
-  width: 220px;
-  position: fixed;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  height: 100vh;
-  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.05);
-}
-
-.main-content {
-  margin-left: 220px;
-  padding: 2rem;
-  flex: 1;
-}
-
-.active {
-  font-weight: bold;
-  color: #42b883;
-  text-decoration: underline;
-}
-
-.user-token-bar {
-  margin-top: 32px;
-  padding: 10px 0 0 0;
+.v-user-token-bar {
+  margin: 16px 0 0 0;
   text-align: center;
   font-size: 0.98rem;
   color: #888;
-  border-top: 1px solid #e0e0e0;
 }
-
-.user-token-bar code {
+.v-user-token-bar code {
   background: #f3f3f3;
   border-radius: 4px;
   padding: 2px 6px;
   font-size: 0.98em;
   color: #1976d2;
-}
-
-.navbar-toggle {
-  display: none;
-  position: fixed;
-  top: 16px;
-  left: 16px;
-  z-index: 2001;
-  background: #1976d2;
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  padding: 8px 16px;
-  font-size: 1.5rem;
-  cursor: pointer;
-}
-@media (max-width: 768px) {
-  .navbar-toggle {
-    display: block;
-  }
-  .layout {
-    flex-direction: column;
-  }
-  .navbar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 220px;
-    height: 100vh;
-    z-index: 2000;
-    background: #f5f5f5;
-    transform: translateX(0);
-    transition: transform 0.2s;
-  }
-  .navbar.hidden {
-    transform: translateX(-100%);
-  }
-  .main-content {
-    margin-left: 0;
-    padding: 2rem 1rem;
-  }
 }
 
 /* Dialog styles */
