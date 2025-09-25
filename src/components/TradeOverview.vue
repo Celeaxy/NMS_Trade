@@ -1,25 +1,26 @@
 <template>
-  <div>
+  <v-container>
+    <v-expansion-panels>
+      <v-expansion-panel
+        title="Filters">
+        <v-expansion-panel-text>
+          <v-chip-group v-model="enabledItemIds" column multiple selected-class="text-primary">
+            <v-chip v-for="item in items" :key="item.id" :text="item.name" :value="item.id" label/>
+          </v-chip-group>
+        </v-expansion-panel-text>
+      </v-expansion-panel>
+    </v-expansion-panels>
+  </v-container>
     <!-- <TradeGraph :demands="demands" :items="items" :stations="stations" /> -->
-    <div class="filter-container">
-      <button class="filter-toggle" @click="showFilter = !showFilter">
-        <span v-if="showFilter">Hide Filters ▲</span>
-        <span v-else>Show Filters ▼</span>
-      </button>
-      <div v-show="showFilter" class="item-toggle-bar">
-        <span v-for="item in items" :key="item.id" class="item-toggle">
-          <input type="checkbox" v-model="enabledItemIds" :value="item.id" id="item-{{item.id}}" />
-          <label :for="'item-' + item.id">{{ item.name }}</label>
-        </span>
-      </div>
-    </div>
+     
 
     <!-- <OpportunitiesSection /> -->
     <TradeChainSection :demands="filteredDemands" :items="filteredItems" :stations="stations" />
-  </div>
 </template>
 
 <script setup lang="ts">
+import {VExpansionPanel, VExpansionPanels, VExpansionPanelText, VChipGroup, VChip} from 'vuetify/components';
+
 import TradeGraph from './TradeGraph.vue';
 import TradeChainSection from './TradeChain.vue';
 import { ref, computed, onMounted, watch } from 'vue';
@@ -31,7 +32,6 @@ const enabledItemIds = ref<number[]>([]);
 const items = ref<Item[]>([]);
 const stations = ref<Station[]>([]);
 const demands = ref<Demand[]>([]);
-const showFilter = ref(false);
 
 async function fetchItems() {
   items.value = (await ItemAPI.fetch()).filter((i) => i.tradeGood);
@@ -76,40 +76,3 @@ watch(enabledItemIds, (val) => {
   // filteredItems and filteredDemands are computed, so they will update automatically
 });
 </script>
-
-<style scoped>
-.filter-container {
-  margin-bottom: 18px;
-}
-.filter-toggle {
-  background: #1976d2;
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  padding: 6px 16px;
-  font-size: 1rem;
-  cursor: pointer;
-  margin-bottom: 8px;
-}
-.filter-toggle:hover {
-  background: #125ea2;
-}
-.item-toggle-bar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  align-items: center;
-}
-.item-toggle {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  background: #f3f3f3;
-  border-radius: 6px;
-  padding: 4px 10px;
-  font-size: 1rem;
-}
-.item-toggle input[type='checkbox'] {
-  accent-color: #1976d2;
-}
-</style>
