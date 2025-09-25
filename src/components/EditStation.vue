@@ -7,11 +7,11 @@
     </form>
     <h2>Item Demands</h2>
     <ul>
-      <li v-for="demand in demands" :key="demand.item_id">
-        {{ getItemById(demand.item_id)?.name }}
-        <input v-model.number="demand.demand_level" type="number" />
+      <li v-for="demand in demands" :key="demand.itemId">
+        {{ getItemById(demand.itemId)?.name }}
+        <input v-model.number="demand.demandLevel" type="number" />
         <span>%</span>
-        <button @click="removeItem(demand.item_id)">Remove</button>
+        <button @click="removeItem(demand.itemId)">Remove</button>
       </li>
     </ul>
     <h3>Add Item to Station</h3>
@@ -22,7 +22,7 @@
           ref="itemInput"
           placeholder="Search or select item..."
           @focus="dropdownOpen = true"
-          @blur="setTimeout(() => (dropdownOpen = false), 200)"
+          @blur="closeDropdownWithDelay"
           @keydown.tab.prevent="handleTabSelect"
         />
         <ul v-if="dropdownOpen" class="dropdown-list">
@@ -83,30 +83,30 @@ const items = ref<Item[]>([]);
 const stations = ref<Station[]>([]);
 const demands = ref<Demand[]>([]);
 
-
 const selectedItemId = ref<number | null>(null);
-const newDemand = ref(0);
-const newItemValue = ref(0);
+const newDemand = ref<number>(0);
+const newItemValue = ref<number>(0);
 const dropdownOpen = ref(false);
 const itemInput = ref<HTMLInputElement | null>(null);
 const demandInput = ref<HTMLInputElement | null>(null);
 const valueInput = ref<HTMLInputElement | null>(null);
 
 async function fetchAll() {
-  stations.value = await StationAPI.fetch()
-  items.value = await ItemAPI.fetch()
-  demands.value = (await DemandAPI.fetch()).filter(demand => demand.station_id === stationId);
+  stations.value = await StationAPI.fetch();
+  items.value = await ItemAPI.fetch();
+  demands.value = (await DemandAPI.fetch()).filter((demand) => demand.stationId === stationId);
 }
 
-
-onMounted(() => {
-  fetchAll();
+onMounted(async () => {
+  await fetchAll();
+  station.value = stations.value.find((s) => s.id === stationId) || null;
+  stationName.value = station.value ? station.value.name : '';
 });
 
 const itemFilter = ref('');
 const availableItems = computed(() => {
   if (!station.value) return [];
-  const usedIds = demands.value.map(demand => demand.item_id);
+  const usedIds = demands.value.map((demand) => demand.itemId);
   return items.value.filter((item) => !usedIds.includes(item.id));
 });
 
@@ -117,10 +117,10 @@ const filteredAvailableItems = computed(() => {
   );
 });
 
-function getItemById(id: number): Item | undefined{
-  return items.value.find(item => item.id === id);
+function getItemById(id: number): Item | undefined {
+  return items.value.find((item) => item.id === id);
 }
-function resetNewItemInput(){
+function resetNewItemInput() {
   itemFilter.value = '';
   newItemValue.value = 0;
 }
@@ -130,20 +130,25 @@ async function addItemToStation() {
   let item: Item | undefined;
   if (selectedItemId.value === -1) {
     if (!itemFilter.value.trim()) return;
-    const baseValue =
-      newDemand.value !== 0 ? newItemValue.value / (1 + newDemand.value / 100) : newItemValue.value;
-    const newItem = await ItemAPI.create(itemFilter.value.trim(), baseValue)
+    const baseValue = Number(
+      (newDemand.value !== 0
+        ? newItemValue.value / (1 + newDemand.value / 100)
+        : newItemValue.value
+      ).toFixed(2)
+    );
 
-    resetNewItemInput()
+    const newItem = await ItemAPI.create(itemFilter.value.trim(), baseValue);
+    resetNewItemInput();
     await fetchAll();
-    item = newItem
+    item = newItem;
   } else {
     item = items.value.find((i) => i.id === selectedItemId.value);
   }
 
   if (!item) return;
-  await DemandAPI.create(stationId, item.id, newDemand.value)
-  await fetchAll()
+  console.log(stationId, item.id, newDemand.value);
+  await DemandAPI.create(stationId, item.id, newDemand.value);
+  await fetchAll();
   selectedItemId.value = null;
   newDemand.value = 0;
   nextTick(() => {
@@ -153,14 +158,14 @@ async function addItemToStation() {
 }
 
 async function removeItem(itemId: number) {
-  await ItemAPI.delete(itemId)
+  await ItemAPI.delete(itemId);
   await fetchAll();
 }
 
 async function saveStation() {
   await StationAPI.update(stationId, {
-    name: stationName.value
-  })
+    name: stationName.value,
+  });
   router.push('/stations');
 }
 

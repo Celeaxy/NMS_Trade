@@ -16,29 +16,39 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import type { Station } from '../types';
 import { StationAPI } from '../crud';
 
-const stations = ref<Station[]>(
-  await StationAPI.fetch()
-);
+const stations = ref<Station[]>([]);
 
 const newStationName = ref('');
 const router = useRouter();
 
 async function addStation() {
-  const name = newStationName.value.trim()
+  const name = newStationName.value.trim();
   if (!name) return;
 
-  const newStation = await StationAPI.create(name)
+  const newStation = await StationAPI.create(name);
 
   router.push(`/edit-station/${newStation.id}`);
 }
 
 async function removeStation(id: number) {
-  await StationAPI.delete(id)
-  stations.value = await StationAPI.fetch()
+  await StationAPI.delete(id);
+  stations.value = await StationAPI.fetch();
 }
+
+onMounted(async () => {
+  stations.value = await StationAPI.fetch();
+});
+
+watch(
+  stations,
+  (newStations) => {
+    console.log('Stations updated:', newStations);
+  },
+  { deep: true }
+);
 </script>

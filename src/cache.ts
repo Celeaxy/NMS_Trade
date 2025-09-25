@@ -30,7 +30,10 @@ export class Cache<T> {
   }
 }
 
-export type CachedFunction<TArgs extends unknown[], TResult> = {(...args: TArgs): Promise<TResult>;  clear: () => void };
+export type CachedFunction<TArgs extends unknown[], TResult> = {
+  (...args: TArgs): Promise<TResult>;
+  clear: () => void;
+};
 
 export function cached<TArgs extends unknown[], TResult>(
   fn: (...args: TArgs) => Promise<TResult>,

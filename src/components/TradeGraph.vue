@@ -1,10 +1,10 @@
 <template>
   <div>
     <div class="legend">
-      <span class="legend-item" style="background:#4caf50"></span> Only Buys
-      <span class="legend-item" style="background:#1976d2"></span> Only Sells
-      <span class="legend-item" style="background:#ffb74d"></span> Buys & Sells
-      <span class="legend-item" style="background:#bdbdbd"></span> No Trades
+      <span class="legend-item" style="background: #4caf50"></span> Only Buys
+      <span class="legend-item" style="background: #1976d2"></span> Only Sells
+      <span class="legend-item" style="background: #ffb74d"></span> Buys & Sells
+      <span class="legend-item" style="background: #bdbdbd"></span> No Trades
     </div>
     <div style="height: 1000px; width: 100%">
       <v-chart :option="option" autoresize />
@@ -19,32 +19,15 @@ import { use } from 'echarts/core';
 import { GraphChart } from 'echarts/charts';
 import { TitleComponent, TooltipComponent } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
+import type { Demand, Item, Station } from '../types';
 
 use([GraphChart, TitleComponent, TooltipComponent, CanvasRenderer]);
 
-const props = defineProps<{ chains: any[] }>();
-
-const stations = computed(() => {
-  // Extract all unique stations from chains
-  const stationMap = new Map<
-    string,
-    { id: string; name: string; buys: string[]; sells: string[] }
-  >();
-  for (const chain of props.chains) {
-    const buys = chain.buys.map((b: any) => b.item.name);
-    const sells = chain.sells.map((s: any) => s.item.name);
-    stationMap.set(String(chain.station.id), {
-      id: String(chain.station.id),
-      name: chain.station.name,
-      buys,
-      sells,
-    });
-  }
-  return Array.from(stationMap.values());
-});
+const props = defineProps<{ demands: Demand[]; items: Item[]; stations: Station[] }>();
 
 const option = computed(() => {
-  const nodes = stations.value.map((station) => {
+  const { stations, demands, items } = props;
+  const nodes = stations.map((station) => {
     let color = '#bdbdbd'; // default gray
     if (station.buys.length && !station.sells.length) {
       color = '#4caf50'; // green for only buying
@@ -71,28 +54,12 @@ const option = computed(() => {
   });
   // Create directed links from selling stations to buying stations for each item
   const links: Array<{
-    source: string;
-    target: string;
+    sourceId: number;
+    targetId: number;
     label: { show: boolean; formatter: string };
     symbol: string[];
   }> = [];
-  for (const source of stations.value) {
-    for (const item of source.sells) {
-      for (const target of stations.value) {
-        if (source.id !== target.id && target.buys.includes(item)) {
-          links.push({
-            source: source.id,
-            target: target.id,
-            label: {
-              show: false,
-              formatter: item,
-            },
-            symbol: ['arrow', 'circle'],
-          });
-        }
-      }
-    }
-  }
+
   return {
     tooltip: { trigger: 'item' },
     series: [

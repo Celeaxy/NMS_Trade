@@ -1,84 +1,191 @@
 <template>
   <div class="trade-chain-container">
-    <div class="collapsible-header">
-      <button class="collapse-btn" @click="collapsedChain = !collapsedChain">
-        <span v-if="collapsedChain">▼</span>
-        <span v-else>▲</span>
-      </button>
+    <div class="trade-chain-header">
       <h1>Trade Chain</h1>
     </div>
-    <div v-show="!collapsedChain">
-      <div v-if="chains.length">
-        <template v-for="(chain, idx) in chains" :key="chain.station.id">
-          <div class="station-card">
-            <div class="station-header">
-              <strong>{{ chain.station.name }}</strong>
+    <div v-if="chain.length">
+      <template v-for="(chainLink, idx) in chain" :key="chainLink.station.id">
+        <div class="station-card">
+          <div class="station-header-row">
+            <div class="station-header-title">
+              <strong>{{ chainLink.station.name }}</strong>
             </div>
-            <div class="trade-details">
-              <div v-if="chain.buys.length" class="trade-list buys">
-                <span class="trade-label">Buy:</span>
-                <span
-                  v-for="buy in chain.buys"
-                  :key="buy.item.id"
-                  class="trade-item"
-                  :title="getItemTooltip(buy.item.id)"
-                >
-                  {{ buy.item.name }} <span class="trade-value">({{ buy.price.toFixed(2) }})</span>
-                </span>
-              </div>
-              <div v-if="chain.sells.length" class="trade-list sells" style="margin-top: 8px">
-                <span class="trade-label">Sell:</span>
-                <span
-                  v-for="sell in chain.sells"
-                  :key="sell.item.id"
-                  class="trade-item"
-                  :title="getItemTooltip(sell.item.id)"
-                >
-                  {{ sell.item.name }}
-                  <span class="trade-value">({{ sell.price.toFixed(2) }})</span>
-                </span>
-              </div>
+            <div class="station-header-checkbox">
+              <input type="checkbox" v-model="collapsedLinks[idx]" id="done-{{idx}}" />
+              <label :for="'done-' + idx">Done</label>
             </div>
           </div>
-          <div v-if="idx < chains.length - 1" class="arrow">⇩</div>
-        </template>
-      </div>
-      <div v-else class="no-chain">
-        <p>No profitable trade chain found.</p>
-      </div>
+          <div class="trade-details" v-show="!collapsedLinks[idx]">
+            <div v-if="chainLink.buys.length" class="trade-list buys">
+              <span class="trade-label">Buy:</span>
+              <span
+                v-for="buy in chainLink.buys"
+                :key="buy.item.id"
+                class="trade-item"
+                :title="getItemTooltip(buy.item.id)"
+              >
+                {{ buy.item.name }} <span class="trade-value">({{ buy.price.toFixed(2) }})</span>
+              </span>
+            </div>
+            <div v-if="chainLink.sells.length" class="trade-list sells" style="margin-top: 8px">
+              <span class="trade-label">Sell:</span>
+              <span
+                v-for="sell in chainLink.sells"
+                :key="sell.item.id"
+                class="trade-item"
+                :title="getItemTooltip(sell.item.id)"
+              >
+                {{ sell.item.name }}
+                <span class="trade-value">({{ sell.price.toFixed(2) }})</span>
+              </span>
+            </div>
+          </div>
+        </div>
+        <div v-if="idx < chain.length - 1" class="arrow">⇩</div>
+      </template>
+    </div>
+    <div v-else class="no-chain">
+      <p>No profitable trade chain found.</p>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
-import type { Item } from '../item';
-import { Station } from '../station';
+import { ref, watch } from 'vue';
+import type { Demand, Item, Station } from '../types';
 
-const props = defineProps<{ chains: Array<{ station: Station; buys: Array<{ item: Item; price: number }>; sells: Array<{ item: Item; price: number }> }> }>();
+const props = defineProps<{
+  stations: Station[];
+  items: Item[];
+  demands: Demand[];
+}>();
+
+interface ChainLink {
+  station: Station;
+  buys: { item: Item; price: number }[];
+  sells: { item: Item; price: number }[];
+}
+
+const chain = ref<ChainLink[]>([]);
 const collapsedChain = ref(false);
+// Track collapsed state for each chain link (not persisted)
+const collapsedLinks = ref<boolean[]>([]);
+
+function getItemById(id: number): Item | undefined {
+  return props.items.find((i) => i.id === id);
+}
+
+function getPrice(itemId: number, demand: number): number | null {
+  const item = getItemById(itemId);
+  if (!item) return null;
+  return item.value * (1 + demand / 100);
+}
 
 function getItemTooltip(itemId: number): string {
-  // Find all stations where this item is bought and sold in the chain
-  const buyStations: string[] = [];
-  let sellStation: string | null = null;
-  for (const chain of props.chains) {
-    if (chain.buys.some((buy) => buy.item.id === itemId)) {
-      buyStations.push(chain.station.name);
-    }
-    if (chain.sells.some((sell) => sell.item.id === itemId)) {
-      sellStation = chain.station.name;
-    }
-  }
-  let tooltip = '';
-  if (buyStations.length) {
-    tooltip += `Bought at: ${buyStations.join(', ')}`;
-  }
-  if (sellStation) {
-    tooltip += (tooltip ? '\n' : '') + `Sold at: ${sellStation}`;
-  }
-  return tooltip;
+  const item = getItemById(itemId);
+  if (!item) return 'Unknown item';
+  return `${item.name}\nBase Value: ${item.value.toFixed(2)}`;
 }
+
+function calculateChains() {
+  const { stations, demands, items } = props;
+  const itemIds = items
+    .map((i) => i.id)
+    .filter(
+      (id) =>
+        demands.some((d) => d.itemId === id && d.demandLevel < 0) &&
+        demands.some((d) => d.itemId === id && d.demandLevel > 0)
+    );
+  // Find all relevant supplies
+  const supplies = demands.filter((d) => d.demandLevel < 0 && itemIds.includes(d.itemId));
+  // Only consider the highest demand for each item
+  const demanders: typeof demands = [];
+  for (const id of itemIds) {
+    const highest = demands
+      .filter((d) => d.itemId === id && d.demandLevel > 0)
+      .reduce((max, curr) => (curr.demandLevel > max.demandLevel ? curr : max), {
+        demandLevel: -Infinity,
+      } as (typeof demands)[number]);
+    if (highest && highest.demandLevel > -Infinity) demanders.push(highest);
+  }
+
+  // Build dependency graph: stationId -> Set of stationIds it depends on (suppliers)
+  const dependencies = new Map<number, Set<number>>();
+  stations.forEach((station) => dependencies.set(station.id, new Set()));
+  for (const demand of demanders) {
+    const suppliers = supplies.filter((s) => s.itemId === demand.itemId).map((s) => s.stationId);
+    for (const supplierId of suppliers) {
+      if (supplierId !== demand.stationId) {
+        dependencies.get(demand.stationId)?.add(supplierId);
+      }
+    }
+  }
+
+  // Topological sort
+  const sorted: number[] = [];
+  const tempMark = new Set<number>();
+  const permMark = new Set<number>();
+  function visit(n: number) {
+    if (permMark.has(n)) return;
+    if (tempMark.has(n)) return; // cycle, skip
+    tempMark.add(n);
+    for (const dep of dependencies.get(n) ?? []) {
+      visit(dep);
+    }
+    permMark.add(n);
+    sorted.push(n);
+  }
+  for (const station of stations) {
+    visit(station.id);
+  }
+
+  // Build stationMap for supplies/demands
+  const stationMap = new Map<
+    number,
+    {
+      supplies: { itemId: number; demandLevel: number }[];
+      demands: { itemId: number; demandLevel: number }[];
+    }
+  >();
+  stations.forEach((station) => {
+    const s = supplies
+      .filter((d) => d.stationId === station.id)
+      .map((d) => ({ itemId: d.itemId, demandLevel: d.demandLevel }));
+    const d = demanders
+      .filter((d) => d.stationId === station.id)
+      .map((d) => ({ itemId: d.itemId, demandLevel: d.demandLevel }));
+    stationMap.set(station.id, { supplies: s, demands: d });
+  });
+
+  chain.value = [];
+  for (const stationId of sorted) {
+    const station = stations.find((s) => s.id === stationId);
+    if (!station) continue;
+    const { supplies, demands } = stationMap.get(stationId) ?? { supplies: [], demands: [] };
+    if (supplies.length === 0 && demands.length === 0) continue;
+    chain.value.push({
+      station,
+      buys: supplies.map((supply) => ({
+        item: items.find((i) => i.id === supply.itemId)!,
+        price: getPrice(supply.itemId, supply.demandLevel)!,
+      })),
+      sells: demands.map((demand) => ({
+        item: items.find((i) => i.id === demand.itemId)!,
+        price: getPrice(demand.itemId, demand.demandLevel)!,
+      })),
+    });
+  }
+  // After building chain.value:
+  collapsedLinks.value = chain.value.map(() => false);
+}
+
+watch(
+  () => [props.stations, props.items, props.demands],
+  () => {
+    calculateChains();
+  },
+  { deep: true }
+);
 </script>
 
 <style scoped>
@@ -90,7 +197,7 @@ function getItemTooltip(itemId: number): string {
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
   padding: 32px 24px;
 }
-.collapsible-header {
+.trade-chain-header {
   display: flex;
   align-items: center;
   margin-bottom: 24px;
@@ -126,6 +233,26 @@ function getItemTooltip(itemId: number): string {
   font-weight: 600;
   margin-bottom: 10px;
   color: #2c3e50;
+}
+.station-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.station-header-title {
+  font-size: 1.1rem;
+  font-weight: bold;
+}
+.station-header-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.station-header-checkbox label {
+  font-size: 0.98rem;
+  color: #1976d2;
+  cursor: pointer;
 }
 .trade-details {
   display: flex;
@@ -171,5 +298,10 @@ function getItemTooltip(itemId: number): string {
   color: #888;
   font-size: 1.1rem;
   margin-top: 32px;
+}
+.collapsible-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 24px;
 }
 </style>

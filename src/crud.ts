@@ -42,7 +42,7 @@ function buildCRUD<T>(
   return {
     fetch: fetchFn,
     create: (body: Record<string, unknown>) =>
-      apiRequest<T>({ method: 'POST', path: entity, body }).then(result => {
+      apiRequest<T>({ method: 'POST', path: entity, body }).then((result) => {
         fetchFn.clear();
         clearRelated?.();
         return result;
@@ -53,7 +53,7 @@ function buildCRUD<T>(
         path: entity + (typeof idOrQuery === 'string' ? `/${idOrQuery}` : ''),
         query: typeof idOrQuery === 'object' ? idOrQuery : undefined,
         body: updates,
-      }).then(result => {
+      }).then((result) => {
         fetchFn.clear();
         clearRelated?.();
         return result;
@@ -77,12 +77,12 @@ const fetchDemands = cached(() => apiRequest<Demand[]>({ path: 'demands' }), TTL
 export const ItemAPI = {
   fetch: fetchItems,
   create: (name: string, value: number) =>
-    apiRequest<Item>({ method: 'POST', path: 'item', body: { name, value } }).then(item => {
+    apiRequest<Item>({ method: 'POST', path: 'item', body: { name, value } }).then((item) => {
       fetchItems.clear();
       return item;
     }),
   update: (id: number, updates: Partial<Item>) =>
-    apiRequest<Item>({ method: 'PUT', path: `item/${id}`, body: updates }).then(item => {
+    apiRequest<Item>({ method: 'PUT', path: `item/${id}`, body: updates }).then((item) => {
       fetchItems.clear();
       return item;
     }),
@@ -96,12 +96,12 @@ export const ItemAPI = {
 export const StationAPI = {
   fetch: fetchStations,
   create: (name: string) =>
-    apiRequest<Station>({ method: 'POST', path: 'station', body: { name } }).then(station => {
+    apiRequest<Station>({ method: 'POST', path: 'station', body: { name } }).then((station) => {
       fetchStations.clear();
       return station;
     }),
   update: (id: number, updates: Partial<Station>) =>
-    apiRequest<Station>({ method: 'PUT', path: `station/${id}`, body: updates }).then(station => {
+    apiRequest<Station>({ method: 'PUT', path: `station/${id}`, body: updates }).then((station) => {
       fetchStations.clear();
       return station;
     }),
@@ -116,21 +116,28 @@ export const DemandAPI = {
   fetch: fetchDemands,
   create: (stationId: number, itemId: number, demandLevel: number) =>
     apiRequest<Demand>({
-      method: 'POST', path: 'demand', body: { stationId, itemId, demandLevel }
-    }).then(demand => {
+      method: 'POST',
+      path: 'demand',
+      body: { stationId, itemId, demandLevel },
+    }).then((demand) => {
       fetchDemands.clear();
       return demand;
     }),
   update: (stationId: number, itemId: number, updates: Partial<Demand>) =>
     apiRequest<Demand>({
-      method: 'PUT', path: 'demand', query: { stationId, itemId }, body: updates
-    }).then(demand => {
+      method: 'PUT',
+      path: 'demand',
+      query: { stationId, itemId },
+      body: updates,
+    }).then((demand) => {
       fetchDemands.clear();
       return demand;
     }),
   delete: (stationId: number, itemId: number) =>
     apiRequest<void>({
-      method: 'DELETE', path: 'demand', query: { stationId, itemId }
+      method: 'DELETE',
+      path: 'demand',
+      query: { stationId, itemId },
     }).then(() => {
       fetchDemands.clear();
     }),

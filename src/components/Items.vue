@@ -16,17 +16,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, } from 'vue';
+import { onMounted, ref } from 'vue';
 import type { Item } from '../types';
 import { ItemAPI } from '../crud';
 
-const items = ref<Item[]>(await ItemAPI.fetch());
+const items = ref<Item[]>([]);
 const newItemName = ref('');
 const newItemValue = ref(0);
 
-
 async function addItem() {
-  const name = newItemName.value.trim()
+  const name = newItemName.value.trim();
   if (!name) return;
 
   await ItemAPI.create(name, newItemValue.value);
@@ -41,4 +40,8 @@ async function removeItem(id: number) {
   await ItemAPI.delete(id);
   items.value = await ItemAPI.fetch();
 }
+
+onMounted(async () => {
+  items.value = await ItemAPI.fetch();
+});
 </script>
