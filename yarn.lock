@@ -840,10 +840,10 @@ vue@^3.5.18:
     "@vue/server-renderer" "3.5.21"
     "@vue/shared" "3.5.21"
 
-vuetify@^3.9.0-beta.1:
-  version "3.9.0-beta.1"
-  resolved "https://registry.yarnpkg.com/vuetify/-/vuetify-3.9.0-beta.1.tgz#33856078e433ae1937001c69dc14b9297bc37901"
-  integrity sha512-fdt4hCNvClloNf1d5BpULrz5mrhLaFSPPmRuPUuQiMWbUU15i6Wa45i7GaDsGyO0Ij91SHb1jAdEGVLE/kG/6g==
+vuetify@^3.10.3:
+  version "3.10.3"
+  resolved "https://registry.yarnpkg.com/vuetify/-/vuetify-3.10.3.tgz#f04e507bb5efee6b52f11b2fd60a20dced1a8831"
+  integrity sha512-psc7oZfjz3LwH96ZRzSm4iGcOKKoeoVZIyO5Q5xO4vcUfWYxobL7TvMQv53jv1PnNvaMIXWeVIrQmiyce5dpTg==
 
 web-streams-polyfill@^3.0.3:
   version "3.3.3"
