@@ -9,11 +9,12 @@
         </v-expansion-panel-text>
       </v-expansion-panel>
     </v-expansion-panels>
+    <TradeChainSection :demands="filteredDemands" :items="filteredItems" :stations="stations" />
   </v-container>
+  <v-container> </v-container>
   <!-- <TradeGraph :demands="demands" :items="items" :stations="stations" /> -->
 
   <!-- <OpportunitiesSection /> -->
-  <TradeChainSection :demands="filteredDemands" :items="filteredItems" :stations="stations" />
 </template>
 
 <script setup lang="ts">
@@ -30,7 +31,6 @@ import TradeChainSection from './TradeChain.vue';
 import { ref, computed, onMounted, watch } from 'vue';
 import type { Demand, Item, Station } from '../types';
 import { DemandAPI, ItemAPI, StationAPI } from '../crud';
-
 const enabledItemIds = ref<number[]>([]);
 
 const items = ref<Item[]>([]);
