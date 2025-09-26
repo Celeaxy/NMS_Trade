@@ -50,7 +50,6 @@ onMounted(() => {
   }
 });
 
-
 function submitToken() {
   const val = tokenInput.value.trim();
   if (isHexToken(val)) {
@@ -59,7 +58,6 @@ function submitToken() {
     showTokenPrompt.value = false;
   }
 }
-
 
 const { smAndDown } = useDisplay();
 const isMobile = computed(() => smAndDown.value);
@@ -105,6 +103,7 @@ async function search() {
         @keydown.enter="search"
         clearable
         class="mx-5"
+        max-width="300"
       />
     </v-app-bar>
     <v-navigation-drawer
