@@ -1,25 +1,30 @@
 <template>
   <v-container>
     <v-expansion-panels>
-      <v-expansion-panel
-        title="Filters">
+      <v-expansion-panel title="Filters">
         <v-expansion-panel-text>
           <v-chip-group v-model="enabledItemIds" column multiple selected-class="text-primary">
-            <v-chip v-for="item in items" :key="item.id" :text="item.name" :value="item.id" label/>
+            <v-chip v-for="item in items" :key="item.id" :text="item.name" :value="item.id" label />
           </v-chip-group>
         </v-expansion-panel-text>
       </v-expansion-panel>
     </v-expansion-panels>
   </v-container>
-    <!-- <TradeGraph :demands="demands" :items="items" :stations="stations" /> -->
-     
+  <!-- <TradeGraph :demands="demands" :items="items" :stations="stations" /> -->
 
-    <!-- <OpportunitiesSection /> -->
-    <TradeChainSection :demands="filteredDemands" :items="filteredItems" :stations="stations" />
+  <!-- <OpportunitiesSection /> -->
+  <TradeChainSection :demands="filteredDemands" :items="filteredItems" :stations="stations" />
 </template>
 
 <script setup lang="ts">
-import {VExpansionPanel, VExpansionPanels, VExpansionPanelText, VChipGroup, VChip, VContainer} from 'vuetify/components';
+import {
+  VExpansionPanel,
+  VExpansionPanels,
+  VExpansionPanelText,
+  VChipGroup,
+  VChip,
+  VContainer,
+} from 'vuetify/components';
 
 import TradeGraph from './TradeGraph.vue';
 import TradeChainSection from './TradeChain.vue';
