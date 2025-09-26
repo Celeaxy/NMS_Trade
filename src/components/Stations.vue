@@ -8,7 +8,10 @@
           <v-btn
             color="red"
             icon="mdi-delete"
-            @click="removeStation(station.id)"
+            @click="
+              stationToDelete = station.id;
+              showConfirmDelete = true;
+            "
             variant="text"
           ></v-btn>
         </template>
@@ -20,14 +23,19 @@
     </v-list>
 
     <v-fab icon="mdi-plus" @click="addStationDialog = true" app></v-fab>
-    <v-dialog v-model="addStationDialog" max-width="600px">
-      <v-sheet>
-        <v-form @submit.prevent="addStation" class="d-flex flex-column pa-2">
-          <v-text-field v-model="newStationName" label="New station name" />
-          <v-btn color="primary" type="submit">Add</v-btn>
-        </v-form>
-      </v-sheet>
-    </v-dialog>
+
+    <FormDialog v-model="addStationDialog" title="Add Station" @submit="addStation">
+      <template #form>
+        <v-text-field v-model="newStationName" label="New station name" />
+      </template>
+    </FormDialog>
+
+    <ConfirmDialog
+      v-model="showConfirmDelete"
+      title="Delete Station"
+      :message="`Are you sure you want to delete ${getStationById(stationToDelete)?.name}?`"
+      @confirm="deleteStation"
+    />
   </v-container>
 </template>
 
@@ -36,24 +44,31 @@ import { onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import type { Station } from '../types';
 import { StationAPI } from '../crud';
-import {
-  VSheet,
-  VFab,
-  VDialog,
-  VForm,
-  VTextField,
-  VBtn,
-  VList,
-  VListItem,
-  VSpacer,
-  VContainer,
-} from 'vuetify/components';
+import { VFab, VTextField, VBtn, VList, VListItem, VSpacer, VContainer } from 'vuetify/components';
+import ConfirmDialog from './ConfirmDialog.vue';
+import FormDialog from './FormDialog.vue';
 
 const stations = ref<Station[]>([]);
 
 const newStationName = ref('');
 const router = useRouter();
 const addStationDialog = ref(false);
+
+const showConfirmDelete = ref(false);
+const stationToDelete = ref<number | null>(null);
+
+function getStationById(id: number | null): Station | null {
+  return stations.value.find((s) => s.id === id) || null;
+}
+
+async function deleteStation() {
+  if (stationToDelete.value !== null) {
+    await StationAPI.delete(stationToDelete.value);
+    stations.value = await StationAPI.fetch();
+    stationToDelete.value = null;
+  }
+  showConfirmDelete.value = false;
+}
 
 async function addStation() {
   const name = newStationName.value.trim();
@@ -62,11 +77,6 @@ async function addStation() {
   const newStation = await StationAPI.create(name);
 
   router.push({ name: 'EditStation', params: { id: newStation.id } });
-}
-
-async function removeStation(id: number) {
-  await StationAPI.delete(id);
-  stations.value = await StationAPI.fetch();
 }
 
 function editStation(id: number) {

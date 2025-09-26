@@ -9,7 +9,15 @@
         :subtitle="'Value: ' + item.value"
       >
         <template v-slot:append>
-          <v-btn color="red" icon="mdi-delete" @click="removeItem(item.id)" variant="text"></v-btn>
+          <v-btn
+            color="red"
+            icon="mdi-delete"
+            @click="
+              itemToDelete = item.id;
+              showConfirmDelete = true;
+            "
+            variant="text"
+          ></v-btn>
         </template>
       </v-list-item>
       <v-list-item>
@@ -17,15 +25,20 @@
       </v-list-item>
     </v-list>
     <v-fab icon="mdi-plus" @click="addItemDialog = true" app></v-fab>
-    <v-dialog v-model="addItemDialog" max-width="600px">
-      <v-sheet>
-        <v-form @submit.prevent="addItem" class="d-flex flex-column pa-2">
-          <v-text-field v-model="newItemName" label="New item name" />
-          <v-text-field v-model.number="newItemValue" type="number" label="Value" />
-          <v-btn color="primary" type="submit">Add</v-btn>
-        </v-form>
-      </v-sheet>
-    </v-dialog>
+
+    <FormDialog v-model="addItemDialog" title="Add Item" @submit="addItem">
+      <template #form>
+        <v-text-field v-model="formData.name" label="Name" />
+        <v-text-field type="number" v-model.number="formData.value" label="Value" />
+      </template>
+    </FormDialog>
+
+    <ConfirmDialog
+      v-model="showConfirmDelete"
+      title="Delete Item"
+      :message="`Are you sure you want to delete ${getItemById(itemToDelete)?.name}?`"
+      @confirm="deleteItem"
+    />
   </v-container>
 </template>
 
@@ -33,23 +46,32 @@
 import { onMounted, ref } from 'vue';
 import type { Item } from '../types';
 import { ItemAPI } from '../crud';
-import {
-  VSheet,
-  VList,
-  VListItem,
-  VBtn,
-  VFab,
-  VDialog,
-  VForm,
-  VTextField,
-  VSpacer,
-  VContainer,
-} from 'vuetify/components';
-
+import { VList, VListItem, VBtn, VFab, VTextField, VSpacer, VContainer } from 'vuetify/components';
+import ConfirmDialog from './ConfirmDialog.vue';
+import FormDialog from './FormDialog.vue';
 const items = ref<Item[]>([]);
 const newItemName = ref('');
 const newItemValue = ref(0);
 const addItemDialog = ref(false);
+
+const showConfirmDelete = ref(false);
+const itemToDelete = ref<number | null>(null);
+
+const formData = ref({
+  name: '',
+  value: 0,
+});
+
+function getItemById(id: number | null): Item | null {
+  return items.value.find((i) => i.id === id) || null;
+}
+
+async function deleteItem() {
+  if (itemToDelete.value !== null) {
+    await ItemAPI.delete(itemToDelete.value);
+    items.value = await ItemAPI.fetch();
+  }
+}
 
 async function addItem() {
   const name = newItemName.value.trim();
@@ -57,14 +79,9 @@ async function addItem() {
 
   await ItemAPI.create(name, newItemValue.value);
 
-  newItemName.value = '';
-  newItemValue.value = 0;
+  formData.value.name = '';
+  formData.value.value = 0;
 
-  items.value = await ItemAPI.fetch();
-}
-
-async function removeItem(id: number) {
-  await ItemAPI.delete(id);
   items.value = await ItemAPI.fetch();
 }
 
