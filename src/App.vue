@@ -2,8 +2,26 @@
 import { RouterView, RouterLink } from 'vue-router';
 import { computed, onMounted, ref } from 'vue';
 // Vuetify components
-import { VApp, VAppBar, VAppBarNavIcon, VDivider, VAppBarTitle, VNavigationDrawer, VList, VListItem, VBtn, VSpacer, VMain, VDialog, VCard, VCardTitle, VCardText, VCardActions, VTextField } from 'vuetify/components';
-import { useDisplay } from 'vuetify'
+import {
+  VApp,
+  VAppBar,
+  VAppBarNavIcon,
+  VDivider,
+  VAppBarTitle,
+  VNavigationDrawer,
+  VList,
+  VListItem,
+  VBtn,
+  VSpacer,
+  VMain,
+  VDialog,
+  VCard,
+  VCardTitle,
+  VCardText,
+  VCardActions,
+  VTextField,
+} from 'vuetify/components';
+import { useDisplay } from 'vuetify';
 
 function generateUserToken() {
   // Generate a random 8-character hexadecimal string
@@ -54,10 +72,8 @@ function createNewToken() {
   // Keep dialog open so user can see/copy token
 }
 
-
-
-const {smAndDown} = useDisplay()
-const isMobile = computed(() => smAndDown.value)
+const { smAndDown } = useDisplay();
+const isMobile = computed(() => smAndDown.value);
 
 const drawer = ref(!isMobile.value);
 
@@ -66,15 +82,49 @@ function toggleDrawer() {
     drawer.value = !drawer.value;
   }
 }
+
+import { useRouter } from 'vue-router';
+
+const searchQuery = ref('');
+const router = useRouter();
+
+async function search() {
+  if (!searchQuery.value.trim()) return;
+  router.push({ name: 'Search', query: { q: searchQuery.value } });
+}
 </script>
 
 <template>
   <v-app>
     <v-app-bar app color="primary" dark>
-      <v-app-bar-nav-icon @click="toggleDrawer" class="d-md-flex" v-if="isMobile"></v-app-bar-nav-icon>
+      <v-app-bar-nav-icon
+        @click="toggleDrawer"
+        class="d-md-flex"
+        v-if="isMobile"
+      ></v-app-bar-nav-icon>
       <v-app-bar-title>NMS Trade</v-app-bar-title>
+
+      <v-text-field
+        v-model="searchQuery"
+        append-inner-icon="mdi-magnify"
+        density="compact"
+        label="Search items"
+        variant="solo"
+        hide-details
+        single-line
+        @click:append-inner="search"
+        @keydown.enter="search"
+        clearable
+        class="mx-5"
+      />
     </v-app-bar>
-    <v-navigation-drawer v-model="drawer" app class="d-md-flex" :temporary="isMobile" :permanent="!isMobile">
+    <v-navigation-drawer
+      v-model="drawer"
+      app
+      class="d-md-flex"
+      :temporary="isMobile"
+      :permanent="!isMobile"
+    >
       <v-list nav>
         <v-list-item>
           <RouterLink to="/" @click.native="toggleDrawer">Trading</RouterLink>
@@ -85,10 +135,12 @@ function toggleDrawer() {
         <v-list-item>
           <RouterLink to="/items" @click.native="toggleDrawer">Items</RouterLink>
         </v-list-item>
-        <v-divider/>
+        <v-divider />
         <v-list-item>
           <div class="user-token-bar v-user-token-bar">
-            <span>User Token: <code>{{ userToken }}</code></span>
+            <span
+              >User Token: <code>{{ userToken }}</code></span
+            >
           </div>
         </v-list-item>
       </v-list>
@@ -113,7 +165,6 @@ function toggleDrawer() {
 </template>
 
 <style scoped>
-
 .v-user-token-bar {
   margin: 16px 0 0 0;
   text-align: center;
