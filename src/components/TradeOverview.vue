@@ -19,7 +19,7 @@
 </template>
 
 <script setup lang="ts">
-import {VExpansionPanel, VExpansionPanels, VExpansionPanelText, VChipGroup, VChip} from 'vuetify/components';
+import {VExpansionPanel, VExpansionPanels, VExpansionPanelText, VChipGroup, VChip, VContainer} from 'vuetify/components';
 
 import TradeGraph from './TradeGraph.vue';
 import TradeChainSection from './TradeChain.vue';
