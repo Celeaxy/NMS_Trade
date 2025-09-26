@@ -1,7 +1,8 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import { BASE_ROUTE } from './src/config';
 
 export default defineConfig({
-  base: '/NMS_Trade-frontend/', // <-- Add this line
+  base: BASE_ROUTE,
   plugins: [vue()],
 })

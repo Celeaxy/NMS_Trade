@@ -50,13 +50,7 @@ onMounted(() => {
   }
 });
 
-function chooseInput() {
-  dialogMode.value = 'input';
-}
-function chooseCreate() {
-  dialogMode.value = 'create';
-  createNewToken();
-}
+
 function submitToken() {
   const val = tokenInput.value.trim();
   if (isHexToken(val)) {
@@ -65,12 +59,7 @@ function submitToken() {
     showTokenPrompt.value = false;
   }
 }
-function createNewToken() {
-  const newToken = generateUserToken();
-  localStorage.setItem('user_token', newToken);
-  userToken.value = newToken;
-  // Keep dialog open so user can see/copy token
-}
+
 
 const { smAndDown } = useDisplay();
 const isMobile = computed(() => smAndDown.value);
@@ -127,13 +116,13 @@ async function search() {
     >
       <v-list nav>
         <v-list-item>
-          <RouterLink to="/" @click.native="toggleDrawer">Trading</RouterLink>
+          <RouterLink to="/NMS_Trade" @click.native="toggleDrawer">Trading</RouterLink>
         </v-list-item>
         <v-list-item>
-          <RouterLink to="/stations" @click.native="toggleDrawer">Stations</RouterLink>
+          <RouterLink to="/NMS_Trade/stations" @click.native="toggleDrawer">Stations</RouterLink>
         </v-list-item>
         <v-list-item>
-          <RouterLink to="/items" @click.native="toggleDrawer">Items</RouterLink>
+          <RouterLink to="/NMS_Trade/items" @click.native="toggleDrawer">Items</RouterLink>
         </v-list-item>
         <v-divider />
         <v-list-item>
@@ -142,6 +131,9 @@ async function search() {
               >User Token: <code>{{ userToken }}</code></span
             >
           </div>
+        </v-list-item>
+        <v-list-item>
+          <v-btn variant="text" @click="showTokenPrompt = true">Change User Token</v-btn>
         </v-list-item>
       </v-list>
     </v-navigation-drawer>
@@ -152,11 +144,12 @@ async function search() {
       <v-card>
         <v-card-title>User Token</v-card-title>
         <v-card-text>
-          <v-text-field v-model="tokenInput" label="Enter your user token" type="password" />
+          <v-text-field v-model="tokenInput" label="Enter your user token" />
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn color="primary" @click="submitToken">Save</v-btn>
+          <v-btn @click="tokenInput = generateUserToken()">Generate</v-btn>
           <v-btn variant="text" @click="showTokenPrompt = false">Cancel</v-btn>
         </v-card-actions>
       </v-card>

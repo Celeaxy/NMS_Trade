@@ -9,7 +9,7 @@
       <li v-for="station in stations" :key="station.id">
         {{ station.name }}
         <button @click="removeStation(station.id)">Remove</button>
-        <router-link :to="`/edit-station/${station.id}`">Edit</router-link>
+        <router-link :to="{ name: 'EditStation', params: { id: station.id } }">Edit</router-link>
       </li>
     </ul>
   </div>
@@ -32,7 +32,7 @@ async function addStation() {
 
   const newStation = await StationAPI.create(name);
 
-  router.push(`/edit-station/${newStation.id}`);
+  router.push({ name: 'EditStation', params: { id: newStation.id } });
 }
 
 async function removeStation(id: number) {
