@@ -1,5 +1,5 @@
 import type { _Awaitable } from 'vue-router';
-import { cached, type CachedFunction } from './cache';
+import { cached } from './cache';
 import type { Item, Station, Demand } from './types';
 
 const TTL = 1000 * 60 * 5; // 5 minutes
@@ -34,41 +34,41 @@ async function apiRequest<T>({ method = 'GET', path, query, body }: ApiRequestOp
   return await response.json();
 }
 
-function buildCRUD<T>(
-  entity: string,
-  fetchFn: CachedFunction<unknown[], T>,
-  clearRelated?: () => void
-) {
-  return {
-    fetch: fetchFn,
-    create: (body: Record<string, unknown>) =>
-      apiRequest<T>({ method: 'POST', path: entity, body }).then((result) => {
-        fetchFn.clear();
-        clearRelated?.();
-        return result;
-      }),
-    update: (idOrQuery: string | Record<string, string | number>, updates: Partial<T>) =>
-      apiRequest<T>({
-        method: 'PUT',
-        path: entity + (typeof idOrQuery === 'string' ? `/${idOrQuery}` : ''),
-        query: typeof idOrQuery === 'object' ? idOrQuery : undefined,
-        body: updates,
-      }).then((result) => {
-        fetchFn.clear();
-        clearRelated?.();
-        return result;
-      }),
-    delete: (idOrQuery: string | Record<string, string | number>) =>
-      apiRequest<void>({
-        method: 'DELETE',
-        path: entity + (typeof idOrQuery === 'string' ? `/${idOrQuery}` : ''),
-        query: typeof idOrQuery === 'object' ? idOrQuery : undefined,
-      }).then(() => {
-        fetchFn.clear();
-        clearRelated?.();
-      }),
-  };
-}
+// function buildCRUD<T>(
+//   entity: string,
+//   fetchFn: CachedFunction<unknown[], T>,
+//   clearRelated?: () => void
+// ) {
+//   return {
+//     fetch: fetchFn,
+//     create: (body: Record<string, unknown>) =>
+//       apiRequest<T>({ method: 'POST', path: entity, body }).then((result) => {
+//         fetchFn.clear();
+//         clearRelated?.();
+//         return result;
+//       }),
+//     update: (idOrQuery: string | Record<string, string | number>, updates: Partial<T>) =>
+//       apiRequest<T>({
+//         method: 'PUT',
+//         path: entity + (typeof idOrQuery === 'string' ? `/${idOrQuery}` : ''),
+//         query: typeof idOrQuery === 'object' ? idOrQuery : undefined,
+//         body: updates,
+//       }).then((result) => {
+//         fetchFn.clear();
+//         clearRelated?.();
+//         return result;
+//       }),
+//     delete: (idOrQuery: string | Record<string, string | number>) =>
+//       apiRequest<void>({
+//         method: 'DELETE',
+//         path: entity + (typeof idOrQuery === 'string' ? `/${idOrQuery}` : ''),
+//         query: typeof idOrQuery === 'object' ? idOrQuery : undefined,
+//       }).then(() => {
+//         fetchFn.clear();
+//         clearRelated?.();
+//       }),
+//   };
+// }
 
 const fetchItems = cached(() => apiRequest<Item[]>({ path: 'items' }), TTL);
 const fetchStations = cached(() => apiRequest<Station[]>({ path: 'stations' }), TTL);

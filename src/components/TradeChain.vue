@@ -67,7 +67,6 @@ interface ChainLink {
 }
 
 const chain = ref<ChainLink[]>([]);
-const collapsedChain = ref(false);
 // Track collapsed state for each chain link (not persisted)
 const collapsedLinks = ref<boolean[]>([]);
 

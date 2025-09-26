@@ -26,7 +26,6 @@ import {
   VContainer,
 } from 'vuetify/components';
 
-import TradeGraph from './TradeGraph.vue';
 import TradeChainSection from './TradeChain.vue';
 import { ref, computed, onMounted, watch } from 'vue';
 import type { Demand, Item, Station } from '../types';
