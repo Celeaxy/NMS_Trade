@@ -9,6 +9,7 @@
         :subtitle="'Value: ' + item.value"
       >
         <template v-slot:append>
+          <v-btn icon="mdi-pencil" @click="editItem(item.id)" variant="text"></v-btn>
           <v-btn
             color="red"
             icon="mdi-delete"
@@ -21,9 +22,9 @@
         <v-spacer> </v-spacer>
       </v-list-item>
     </v-list>
-    <v-fab icon="mdi-plus" @click="addItemDialog = true" app></v-fab>
+    <v-fab icon="mdi-plus" @click="handleAddItem" app></v-fab>
 
-    <FormDialog v-model="addItemDialog" title="Add Item" @submit="addItem">
+    <FormDialog v-model="dialog" :title="dialogTitle" @submit="submit">
       <template #form>
         <v-text-field v-model="formData.name" label="Name" />
         <v-text-field type="number" v-model.number="formData.value" label="Value" />
@@ -40,21 +41,16 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import type { Item } from '../types';
 import { ItemAPI } from '../crud';
 import { VList, VListItem, VBtn, VFab, VTextField, VSpacer, VContainer } from 'vuetify/components';
 import ConfirmDialog from '../components/dialogs/ConfirmDialog.vue';
 import FormDialog from '../components/dialogs/FormDialog.vue';
 import { useConfirmDialog } from '../composables/useConfirmDialog';
+import { useFormDialog } from '../composables/useFormDialog';
 
 const items = ref<Item[]>([]);
-const addItemDialog = ref(false);
-
-const formData = ref({
-  name: '',
-  value: 0,
-});
 
 const {
   visible: confirmVisible,
@@ -63,6 +59,19 @@ const {
   confirm,
   title: confirmTitle,
 } = useConfirmDialog();
+
+const dialogMode = ref<'add' | 'edit'>('add');
+const dialogTitle = computed(() => (dialogMode.value === 'add' ? 'Add Item' : 'Edit Item'));
+
+const {
+  open: openItemDialog,
+  dialog,
+  formData,
+  submit,
+} = useFormDialog({
+  name: '',
+  value: 0,
+});
 
 function getItemById(id: number | null): Item | null {
   return items.value.find((i) => i.id === id) || null;
@@ -79,16 +88,22 @@ async function handleDelete(id: number) {
   items.value = await ItemAPI.fetch();
 }
 
-async function addItem() {
-  const name = formData.value.name.trim();
-  console.log('Adding item', name, formData.value.value);
-  if (!name) return;
+async function handleAddItem() {
+  dialogMode.value = 'add';
+  const data = await openItemDialog();
+  if (!data?.name.trim()) return;
+  await ItemAPI.create(data.name, data.value);
+  items.value = await ItemAPI.fetch();
+}
 
-  await ItemAPI.create(name, formData.value.value);
-
-  formData.value.name = '';
-  formData.value.value = 0;
-
+async function editItem(id: number) {
+  const item = getItemById(id);
+  if (!item) return;
+  dialogMode.value = 'edit';
+  const data = await openItemDialog({ name: item.name, value: item.value });
+  if (!data?.name.trim()) return;
+  const { name, value } = data;
+  await ItemAPI.update(id, { name, value });
   items.value = await ItemAPI.fetch();
 }
 
