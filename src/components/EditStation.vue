@@ -18,10 +18,7 @@
             <v-btn
               color="red"
               icon="mdi-delete"
-              @click="
-                itemToDelete = demand.itemId;
-                showConfirmDelete = true;
-              "
+              @click="handleDelete(demand.itemId)"
               variant="text"
             >
               <v-icon>mdi-delete</v-icon>
@@ -31,14 +28,14 @@
         <v-list-item v-else>
           <v-list-item-title>No item demands set.</v-list-item-title>
         </v-list-item>
-        <v-btn icon="mdi-plus" @click="addDemandDialog = true"></v-btn>
+        <v-btn icon="mdi-plus" @click="handleAddDemand"></v-btn>
       </v-list>
 
       <v-btn type="submit" color="primary" class="mt-4">Save Changes</v-btn>
     </v-form>
     <v-alert v-else type="error" class="mt-6">Station not found.</v-alert>
 
-    <FormDialog v-model="addDemandDialog" title="Add Demand" @submit="addItemToStation">
+    <FormDialog v-model="demandDialog" title="Add Demand" @submit="submitDemandDialog">
       <template #form>
         <v-autocomplete
           v-model="selectedItemId"
@@ -60,29 +57,22 @@
         </v-autocomplete>
         <v-text-field
           v-if="selectedItemId === -1"
-          v-model.number="newItemValue"
+          v-model.number="formData.itemId"
           type="number"
           label="Value"
-          ref="valueInput"
           class="mb-2"
         />
         <v-text-field
-          v-model.number="newDemand"
+          v-model.number="formData.demandLevel"
           type="number"
           step="any"
           label="Demand (%)"
-          ref="demandInput"
           class="mb-2"
         />
       </template>
     </FormDialog>
 
-    <ConfirmDialog
-      v-model="showConfirmDelete"
-      title="Delete Demand"
-      :message="`Are you sure you want to delete demand for ${getItemById(itemToDelete)?.name}?`"
-      @confirm="deleteDemand"
-    />
+    <ConfirmDialog v-model="visible" :title="title" :message="message" @resolve="resolve" />
   </v-container>
 </template>
 
@@ -107,6 +97,8 @@ import {
 } from 'vuetify/components';
 import ConfirmDialog from './dialogs/ConfirmDialog.vue';
 import FormDialog from './dialogs/FormDialog.vue';
+import { useConfirmDialog } from '../composables/useConfirmDialog';
+import { useFormDialog } from '../composables/useFormDialog';
 
 const route = useRoute();
 const router = useRouter();
@@ -120,13 +112,18 @@ const stations = ref<Station[]>([]);
 const demands = ref<Demand[]>([]);
 
 const selectedItemId = ref<number | null>(null);
-const newDemand = ref<number>(0);
-const newItemValue = ref<number>(0);
 
-const itemToDelete = ref<number | null>(null);
-const addDemandDialog = ref(false);
-const showConfirmDelete = ref(false);
+const {
+  open: openDemandDialog,
+  submit: submitDemandDialog,
+  dialog: demandDialog,
+  formData,
+} = useFormDialog<{ itemId: number | null; demandLevel: number }>({
+  itemId: null,
+  demandLevel: 0,
+});
 
+const { confirm, visible, title, message, resolve } = useConfirmDialog();
 async function fetchAll() {
   stations.value = await StationAPI.fetch();
   items.value = await ItemAPI.fetch();
@@ -150,52 +147,21 @@ function getItemById(id: number | null): Item | undefined {
   return items.value.find((item) => item.id === id);
 }
 
-function resetNewItemInput() {
-  itemFilter.value = '';
-  newItemValue.value = 0;
-  selectedItemId.value = null;
-}
-
-async function addItemToStation() {
-  if (selectedItemId.value === null) return;
-  let item: Item | undefined;
-  if (selectedItemId.value === -1) {
-    if (!itemFilter.value.trim()) return;
-    const baseValue = Number(
-      (newDemand.value !== 0
-        ? newItemValue.value / (1 + newDemand.value / 100)
-        : newItemValue.value
-      ).toFixed(2)
-    );
-
-    const newItem = await ItemAPI.create(itemFilter.value.trim(), baseValue);
-    resetNewItemInput();
-    await fetchAll();
-    item = newItem;
-  } else {
-    item = items.value.find((i) => i.id === selectedItemId.value);
-  }
-
-  if (!item) return;
-  await DemandAPI.create(stationId, item.id, newDemand.value);
+async function handleAddDemand() {
+  const data = await openDemandDialog();
+  if (!data?.itemId) return;
+  await DemandAPI.create(stationId, data.itemId, data.demandLevel);
   await fetchAll();
-  selectedItemId.value = null;
-  newDemand.value = 0;
-  itemFilter.value = '';
 }
 
-async function deleteDemand() {
-  if (itemToDelete.value !== null) {
-    const demand = demands.value.find(
-      (d) => d.stationId === stationId && d.itemId === itemToDelete.value
-    );
-    if (demand) {
-      await DemandAPI.delete(stationId, itemToDelete.value);
-      await fetchAll();
-    }
-    itemToDelete.value = null;
-  }
-  showConfirmDelete.value = false;
+async function handleDelete(itemId: number) {
+  const ok = await confirm(
+    `Are you sure you want to delete ${getItemById(itemId)?.name} from ${station.value?.name}?`,
+    'Delete Demand'
+  );
+  if (!ok) return;
+  await DemandAPI.delete(stationId, itemId);
+  await fetchAll();
 }
 
 async function saveChanges() {
