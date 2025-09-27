@@ -3,6 +3,7 @@
     v-model="modelValue"
     max-width="500"
     @update:model-value="(val) => emit('update:modelValue', val)"
+    persistent
   >
     <v-card>
       <v-card-title class="text-h6">{{ title }}</v-card-title>
