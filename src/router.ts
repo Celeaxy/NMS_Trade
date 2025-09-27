@@ -1,8 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router';
 
 import TradeOverview from './components/TradeOverview.vue';
-import Stations from './components/Stations.vue';
-import Items from './components/Items.vue';
+import Stations from './views/Stations.vue';
+import Items from './views/Items.vue';
 import EditStation from './components/EditStation.vue';
 import Search from './components/Search.vue';
 

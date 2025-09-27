@@ -1,76 +1,112 @@
 <template>
-  <div v-if="station">
+  <v-container>
     <h1>Edit Station</h1>
-    <form @submit.prevent="saveStation">
-      <input v-model="stationName" placeholder="Station name" />
-      <button type="submit">Save Name</button>
-    </form>
-    <h2>Item Demands</h2>
-    <ul>
-      <li v-for="demand in demands" :key="demand.itemId">
-        {{ getItemById(demand.itemId)?.name }}
-        <input v-model.number="demand.demandLevel" type="number" />
-        <span>%</span>
-        <button @click="removeItem(demand.itemId)">Remove</button>
-      </li>
-    </ul>
-    <h3>Add Item to Station</h3>
-    <form @submit.prevent="addItemToStation" class="search-dropdown-form">
-      <div class="search-dropdown">
-        <input
-          v-model="itemFilter"
-          ref="itemInput"
-          placeholder="Search or select item..."
-          @focus="dropdownOpen = true"
-          @blur="closeDropdownWithDelay"
-          @keydown.tab.prevent="handleTabSelect"
+    <v-form v-if="station" @submit.prevent="saveChanges">
+      <v-text-field
+        v-model="stationName"
+        label="Station Name"
+        prepend-inner-icon="mdi-domain"
+        required
+      />
+      <v-list density="compact">
+        <v-list-item v-if="demands.length" v-for="demand in demands" :key="demand.itemId">
+          <v-list-item-title>
+            {{ getItemById(demand.itemId)?.name }}
+          </v-list-item-title>
+          <v-list-item-subtitle> Demand: {{ demand.demandLevel }}% </v-list-item-subtitle>
+          <template #append>
+            <v-btn
+              color="red"
+              icon="mdi-delete"
+              @click="
+                itemToDelete = demand.itemId;
+                showConfirmDelete = true;
+              "
+              variant="text"
+            >
+              <v-icon>mdi-delete</v-icon>
+            </v-btn>
+          </template>
+        </v-list-item>
+        <v-list-item v-else>
+          <v-list-item-title>No item demands set.</v-list-item-title>
+        </v-list-item>
+        <v-btn icon="mdi-plus" @click="addDemandDialog = true"></v-btn>
+      </v-list>
+
+      <v-btn type="submit" color="primary" class="mt-4">Save Changes</v-btn>
+    </v-form>
+    <v-alert v-else type="error" class="mt-6">Station not found.</v-alert>
+
+    <FormDialog v-model="addDemandDialog" title="Add Demand" @submit="addItemToStation">
+      <template #form>
+        <v-autocomplete
+          v-model="selectedItemId"
+          :items="availableItems"
+          item-title="name"
+          item-value="id"
+          label="Search or select item..."
+          :search-input.sync="itemFilter"
+          clearable
+          :menu-props="{ maxHeight: '200px' }"
+          @update:model-value="onAutocompleteSelect"
+          class="mb-2"
+        >
+          <template #no-data>
+            <v-list-item :class="{ 'bg-primary text-white': selectedItemId === -1 }">
+              <v-list-item-title>Add new item...</v-list-item-title>
+            </v-list-item>
+          </template>
+        </v-autocomplete>
+        <v-text-field
+          v-if="selectedItemId === -1"
+          v-model.number="newItemValue"
+          type="number"
+          label="Value"
+          ref="valueInput"
+          class="mb-2"
         />
-        <ul v-if="dropdownOpen" class="dropdown-list">
-          <li
-            v-for="item in filteredAvailableItems"
-            :key="item.id"
-            @mousedown.prevent="selectItem(item.id)"
-            :class="{ selected: selectedItemId === item.id }"
-          >
-            {{ item.name }} (Value: {{ item.value }})
-          </li>
-          <li
-            v-if="filteredAvailableItems.length === 0"
-            @mousedown.prevent="selectItem(-1)"
-            :class="{ selected: selectedItemId === -1 }"
-          >
-            Add new item...
-          </li>
-        </ul>
-      </div>
-      <div v-if="selectedItemId === -1" class="new-item-fields">
-        <input v-model.number="newItemValue" type="number" placeholder="Value" ref="valueInput" />
-      </div>
-      <label>
-        Demand (%):
-        <input
+        <v-text-field
           v-model.number="newDemand"
           type="number"
           step="any"
-          placeholder="Demand (%)"
+          label="Demand (%)"
           ref="demandInput"
+          class="mb-2"
         />
-      </label>
-      <button type="submit">Add Item</button>
-    </form>
-    <button @click="saveStation">Save All Changes</button>
-  </div>
-  <div v-else>
-    <p>Station not found.</p>
-  </div>
+      </template>
+    </FormDialog>
+
+    <ConfirmDialog
+      v-model="showConfirmDelete"
+      title="Delete Demand"
+      :message="`Are you sure you want to delete demand for ${getItemById(itemToDelete)?.name}?`"
+      @confirm="deleteDemand"
+    />
+  </v-container>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, nextTick } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import type { Station, Item, Demand } from '../types';
 
 import { ItemAPI, StationAPI, DemandAPI } from '../crud';
+import {
+  VContainer,
+  VForm,
+  VTextField,
+  VBtn,
+  VList,
+  VListItem,
+  VAutocomplete,
+  VAlert,
+  VIcon,
+  VListItemSubtitle,
+  VListItemTitle,
+} from 'vuetify/components';
+import ConfirmDialog from './dialogs/ConfirmDialog.vue';
+import FormDialog from './dialogs/FormDialog.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -86,10 +122,10 @@ const demands = ref<Demand[]>([]);
 const selectedItemId = ref<number | null>(null);
 const newDemand = ref<number>(0);
 const newItemValue = ref<number>(0);
-const dropdownOpen = ref(false);
-const itemInput = ref<HTMLInputElement | null>(null);
-const demandInput = ref<HTMLInputElement | null>(null);
-const valueInput = ref<HTMLInputElement | null>(null);
+
+const itemToDelete = ref<number | null>(null);
+const addDemandDialog = ref(false);
+const showConfirmDelete = ref(false);
 
 async function fetchAll() {
   stations.value = await StationAPI.fetch();
@@ -110,19 +146,14 @@ const availableItems = computed(() => {
   return items.value.filter((item) => !usedIds.includes(item.id));
 });
 
-const filteredAvailableItems = computed(() => {
-  if (!itemFilter.value.trim()) return availableItems.value;
-  return availableItems.value.filter((item) =>
-    item.name.toLowerCase().includes(itemFilter.value.trim().toLowerCase())
-  );
-});
-
-function getItemById(id: number): Item | undefined {
+function getItemById(id: number | null): Item | undefined {
   return items.value.find((item) => item.id === id);
 }
+
 function resetNewItemInput() {
   itemFilter.value = '';
   newItemValue.value = 0;
+  selectedItemId.value = null;
 }
 
 async function addItemToStation() {
@@ -146,27 +177,32 @@ async function addItemToStation() {
   }
 
   if (!item) return;
-  console.log(stationId, item.id, newDemand.value);
   await DemandAPI.create(stationId, item.id, newDemand.value);
   await fetchAll();
   selectedItemId.value = null;
   newDemand.value = 0;
-  nextTick(() => {
-    itemFilter.value = '';
-    itemInput.value?.focus();
-  });
+  itemFilter.value = '';
 }
 
-async function removeItem(itemId: number) {
-  await ItemAPI.delete(itemId);
-  await fetchAll();
+async function deleteDemand() {
+  if (itemToDelete.value !== null) {
+    const demand = demands.value.find(
+      (d) => d.stationId === stationId && d.itemId === itemToDelete.value
+    );
+    if (demand) {
+      await DemandAPI.delete(stationId, itemToDelete.value);
+      await fetchAll();
+    }
+    itemToDelete.value = null;
+  }
+  showConfirmDelete.value = false;
 }
 
-async function saveStation() {
+async function saveChanges() {
   await StationAPI.update(stationId, {
     name: stationName.value,
   });
-  router.push('/stations');
+  router.push({ name: 'Stations' });
 }
 
 function selectItem(id: number) {
@@ -174,59 +210,14 @@ function selectItem(id: number) {
   if (id !== -1) {
     const item = availableItems.value.find((i) => i.id === id);
     itemFilter.value = item ? item.name : '';
-    nextTick(() => {
-      demandInput.value?.focus();
-    });
-  } else {
-    nextTick(() => {
-      valueInput.value?.focus();
-    });
-  }
-  dropdownOpen.value = false;
-}
-
-function handleTabSelect() {
-  if (filteredAvailableItems.value.length > 0) {
-    selectItem(filteredAvailableItems.value[0].id);
-  } else {
-    selectItem(-1);
   }
 }
 
-function closeDropdownWithDelay() {
-  setTimeout(() => (dropdownOpen.value = false), 200);
+function onAutocompleteSelect(val: number | null) {
+  if (val === null) {
+    selectedItemId.value = null;
+    return;
+  }
+  selectItem(val);
 }
 </script>
-
-<style scoped>
-.search-dropdown-form {
-  position: relative;
-  max-width: 400px;
-}
-.search-dropdown {
-  position: relative;
-}
-.dropdown-list {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  background: #fff;
-  border: 1px solid #ccc;
-  z-index: 10;
-  max-height: 200px;
-  overflow-y: auto;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.dropdown-list li {
-  padding: 8px 12px;
-  cursor: pointer;
-}
-.dropdown-list li.selected,
-.dropdown-list li:hover {
-  background: #42b883;
-  color: #fff;
-}
-</style>

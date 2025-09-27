@@ -12,10 +12,7 @@
           <v-btn
             color="red"
             icon="mdi-delete"
-            @click="
-              itemToDelete = item.id;
-              showConfirmDelete = true;
-            "
+            @click="handleDelete(item.id)"
             variant="text"
           ></v-btn>
         </template>
@@ -34,10 +31,10 @@
     </FormDialog>
 
     <ConfirmDialog
-      v-model="showConfirmDelete"
-      title="Delete Item"
-      :message="`Are you sure you want to delete ${getItemById(itemToDelete)?.name}?`"
-      @confirm="deleteItem"
+      v-model="confirmVisible"
+      :title="confirmTitle"
+      :message="confirmMessage"
+      @resolve="confirmResolve"
     />
   </v-container>
 </template>
@@ -47,37 +44,47 @@ import { onMounted, ref } from 'vue';
 import type { Item } from '../types';
 import { ItemAPI } from '../crud';
 import { VList, VListItem, VBtn, VFab, VTextField, VSpacer, VContainer } from 'vuetify/components';
-import ConfirmDialog from './ConfirmDialog.vue';
-import FormDialog from './FormDialog.vue';
-const items = ref<Item[]>([]);
-const newItemName = ref('');
-const newItemValue = ref(0);
-const addItemDialog = ref(false);
+import ConfirmDialog from '../components/dialogs/ConfirmDialog.vue';
+import FormDialog from '../components/dialogs/FormDialog.vue';
+import { useConfirmDialog } from '../composables/useConfirmDialog';
 
-const showConfirmDelete = ref(false);
-const itemToDelete = ref<number | null>(null);
+const items = ref<Item[]>([]);
+const addItemDialog = ref(false);
 
 const formData = ref({
   name: '',
   value: 0,
 });
 
+const {
+  visible: confirmVisible,
+  resolve: confirmResolve,
+  message: confirmMessage,
+  confirm,
+  title: confirmTitle,
+} = useConfirmDialog();
+
 function getItemById(id: number | null): Item | null {
   return items.value.find((i) => i.id === id) || null;
 }
 
-async function deleteItem() {
-  if (itemToDelete.value !== null) {
-    await ItemAPI.delete(itemToDelete.value);
-    items.value = await ItemAPI.fetch();
-  }
+async function handleDelete(id: number) {
+  const ok = await confirm(
+    `Are you sure you want to delete ${getItemById(id)?.name}?`,
+    'Delete Item'
+  );
+  if (!ok) return;
+
+  await ItemAPI.delete(id);
+  items.value = await ItemAPI.fetch();
 }
 
 async function addItem() {
-  const name = newItemName.value.trim();
+  const name = formData.value.name.trim();
+  console.log('Adding item', name, formData.value.value);
   if (!name) return;
 
-  await ItemAPI.create(name, newItemValue.value);
+  await ItemAPI.create(name, formData.value.value);
 
   formData.value.name = '';
   formData.value.value = 0;

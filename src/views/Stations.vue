@@ -8,10 +8,7 @@
           <v-btn
             color="red"
             icon="mdi-delete"
-            @click="
-              stationToDelete = station.id;
-              showConfirmDelete = true;
-            "
+            @click="handleDelete(station.id)"
             variant="text"
           ></v-btn>
         </template>
@@ -31,10 +28,17 @@
     </FormDialog>
 
     <ConfirmDialog
-      v-model="showConfirmDelete"
-      title="Delete Station"
-      :message="`Are you sure you want to delete ${getStationById(stationToDelete)?.name}?`"
-      @confirm="deleteStation"
+      v-model="confirmVisible"
+      :title="confirmTitle"
+      :message="confirmMessage"
+      @resolve="confirmResolve"
+    />
+
+    <ConfirmDialog
+      v-model="confirmVisible"
+      :title="confirmTitle"
+      :message="confirmMessage"
+      @resolve="confirmResolve"
     />
   </v-container>
 </template>
@@ -45,8 +49,9 @@ import { useRouter } from 'vue-router';
 import type { Station } from '../types';
 import { StationAPI } from '../crud';
 import { VFab, VTextField, VBtn, VList, VListItem, VSpacer, VContainer } from 'vuetify/components';
-import ConfirmDialog from './ConfirmDialog.vue';
-import FormDialog from './FormDialog.vue';
+import ConfirmDialog from '../components/dialogs/ConfirmDialog.vue';
+import FormDialog from '../components/dialogs/FormDialog.vue';
+import { useConfirmDialog } from '../composables/useConfirmDialog';
 
 const stations = ref<Station[]>([]);
 
@@ -54,20 +59,26 @@ const newStationName = ref('');
 const router = useRouter();
 const addStationDialog = ref(false);
 
-const showConfirmDelete = ref(false);
-const stationToDelete = ref<number | null>(null);
+const {
+  visible: confirmVisible,
+  resolve: confirmResolve,
+  message: confirmMessage,
+  confirm,
+  title: confirmTitle,
+} = useConfirmDialog();
 
 function getStationById(id: number | null): Station | null {
   return stations.value.find((s) => s.id === id) || null;
 }
 
-async function deleteStation() {
-  if (stationToDelete.value !== null) {
-    await StationAPI.delete(stationToDelete.value);
-    stations.value = await StationAPI.fetch();
-    stationToDelete.value = null;
-  }
-  showConfirmDelete.value = false;
+async function handleDelete(id: number) {
+  const ok = await confirm(
+    `Are you sure you want to delete ${getStationById(id)?.name}?`,
+    'Delete Station'
+  );
+  if (!ok) return;
+  await StationAPI.delete(id);
+  stations.value = await StationAPI.fetch();
 }
 
 async function addStation() {
