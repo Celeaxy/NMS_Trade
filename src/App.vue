@@ -115,13 +115,15 @@ async function search() {
     >
       <v-list nav>
         <v-list-item>
-          <RouterLink to="/NMS_Trade" @click.native="toggleDrawer">Trading</RouterLink>
+          <RouterLink :to="{ name: 'TradeOverview' }" @click.native="toggleDrawer"
+            >Trading</RouterLink
+          >
         </v-list-item>
         <v-list-item>
-          <RouterLink to="/NMS_Trade/stations" @click.native="toggleDrawer">Stations</RouterLink>
+          <RouterLink :to="{ name: 'Stations' }" @click.native="toggleDrawer">Stations</RouterLink>
         </v-list-item>
         <v-list-item>
-          <RouterLink to="/NMS_Trade/items" @click.native="toggleDrawer">Items</RouterLink>
+          <RouterLink :to="{ name: 'Items' }" @click.native="toggleDrawer">Items</RouterLink>
         </v-list-item>
         <v-divider />
         <v-list-item>
