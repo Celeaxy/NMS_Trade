@@ -68,10 +68,10 @@
         />
         <v-text-field
           v-model.number="demandFormData.demandLevel"
-          type="number"
-          step="any"
+          step=".1"
           label="Demand (%)"
           class="mb-2"
+          :rules="[(v) => !isNaN(Number(v)) || 'Demand must be a number']"
         />
       </template>
     </FormDialog>
