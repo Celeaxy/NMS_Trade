@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory } from 'vue-router';
+import { createRouter, createWebHashHistory } from 'vue-router';
 
 import TradeOverview from './components/TradeOverview.vue';
 import Stations from './views/Stations.vue';
@@ -17,7 +17,7 @@ const routes = [
 ];
 
 const router = createRouter({
-  history: createWebHistory(BASE_ROUTE),
+  history: createWebHashHistory(BASE_ROUTE),
   routes,
 });
 
