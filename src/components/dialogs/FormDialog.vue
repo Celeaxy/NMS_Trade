@@ -1,10 +1,5 @@
 <template>
-  <v-dialog
-    v-model="modelValue"
-    max-width="500"
-    @update:model-value="(val) => emit('update:modelValue', val)"
-    persistent
-  >
+  <v-dialog max-width="500" persistent>
     <v-card>
       <v-card-title class="text-h6">{{ title }}</v-card-title>
       <v-card-text>
@@ -20,7 +15,6 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
 import {
   VDialog,
   VCard,
@@ -30,7 +24,6 @@ import {
   VSpacer,
   VBtn,
 } from 'vuetify/components';
-const modelValue = ref(true);
 defineProps({
   title: {
     type: String,
@@ -41,8 +34,8 @@ defineProps({
 const emit = defineEmits(['update:modelValue', 'submit', 'cancel']);
 
 function cancel() {
-  emit('update:modelValue', false);
   emit('cancel');
+  emit('update:modelValue', false);
 }
 function submit() {
   emit('submit');
