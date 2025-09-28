@@ -15,12 +15,8 @@
           </v-list-item-title>
           <v-list-item-subtitle> Demand: {{ demand.demandLevel }}% </v-list-item-subtitle>
           <template #append>
-            <v-btn
-              color="red"
-              icon="mdi-delete"
-              @click="handleDelete(demand.itemId)"
-              variant="text"
-            >
+            <v-btn icon="mdi-pencil" @click="handleEditDemand(demand)" variant="text"></v-btn>
+            <v-btn color="red" icon="mdi-delete" @click="handleDelete(demand)" variant="text">
               <v-icon>mdi-delete</v-icon>
             </v-btn>
           </template>
@@ -35,35 +31,43 @@
     </v-form>
     <v-alert v-else type="error" class="mt-6">Station not found.</v-alert>
 
-    <FormDialog v-model="demandDialog" title="Add Demand" @submit="submitDemandDialog">
+    <FormDialog v-model="demandDialog" @submit="createAndSubmit" :title="demandTitle">
       <template #form>
-        <v-autocomplete
-          v-model="selectedItemId"
+        <v-combobox
+          v-model="demandFormData.item"
+          v-model:search="itemFilter"
+          :hide-no-data="false"
           :items="availableItems"
           item-title="name"
-          item-value="id"
+          return-object
           label="Search or select item..."
-          :search-input.sync="itemFilter"
-          clearable
+          :clearable="dialogMode !== 'edit'"
           :menu-props="{ maxHeight: '200px' }"
-          @update:model-value="onAutocompleteSelect"
-          class="mb-2"
+          :readonly="dialogMode === 'edit'"
+          auto-select-first
+          @update:model-value="onNewItemSelected"
+          ref="combobox"
+          @keydown.enter="handleKeySelect"
+          @keydown.tab="handleKeySelect"
         >
           <template #no-data>
-            <v-list-item :class="{ 'bg-primary text-white': selectedItemId === -1 }">
+            <v-list-item
+              @click="setNewItemMode"
+              :class="{ 'bg-primary text-white': selectedItemId === -1 }"
+            >
               <v-list-item-title>Add new item...</v-list-item-title>
             </v-list-item>
           </template>
-        </v-autocomplete>
+        </v-combobox>
         <v-text-field
-          v-if="selectedItemId === -1"
-          v-model.number="formData.itemId"
+          v-if="demandFormData.newItem"
+          v-model.number="demandFormData.newItem.value"
           type="number"
-          label="Value"
+          label="Value at the current station"
           class="mb-2"
         />
         <v-text-field
-          v-model.number="formData.demandLevel"
+          v-model.number="demandFormData.demandLevel"
           type="number"
           step="any"
           label="Demand (%)"
@@ -89,7 +93,7 @@ import {
   VBtn,
   VList,
   VListItem,
-  VAutocomplete,
+  VCombobox,
   VAlert,
   VIcon,
   VListItemSubtitle,
@@ -113,17 +117,24 @@ const demands = ref<Demand[]>([]);
 
 const selectedItemId = ref<number | null>(null);
 
+const dialogMode = ref<'add' | 'edit'>('add');
 const {
   open: openDemandDialog,
-  submit: submitDemandDialog,
+  submit: submitDemand,
   dialog: demandDialog,
-  formData,
-} = useFormDialog<{ itemId: number | null; demandLevel: number }>({
-  itemId: null,
+  formData: demandFormData,
+  title: demandTitle,
+} = useFormDialog<{
+  item: Item | null;
+  demandLevel: number;
+  newItem?: { name: string; value: number };
+}>({
+  item: null,
   demandLevel: 0,
 });
 
 const { confirm, visible, title, message, resolve } = useConfirmDialog();
+
 async function fetchAll() {
   stations.value = await StationAPI.fetch();
   items.value = await ItemAPI.fetch();
@@ -148,19 +159,30 @@ function getItemById(id: number | null): Item | undefined {
 }
 
 async function handleAddDemand() {
-  const data = await openDemandDialog();
-  if (!data?.itemId) return;
-  await DemandAPI.create(stationId, data.itemId, data.demandLevel);
+  dialogMode.value = 'add';
+  const data = await openDemandDialog(undefined, 'Add Demand');
+  if (!data?.item) return;
+
+  await DemandAPI.create(stationId, data.item.id, data.demandLevel);
   await fetchAll();
 }
 
-async function handleDelete(itemId: number) {
+async function handleEditDemand(demand: Demand) {
+  dialogMode.value = 'edit';
+  const item = getItemById(demand.itemId) || null;
+  const data = await openDemandDialog({ item, demandLevel: demand.demandLevel }, 'Edit Demand');
+  if (!data?.item) return;
+  await DemandAPI.update(stationId, demand.itemId, { demandLevel: data.demandLevel });
+  await fetchAll();
+}
+
+async function handleDelete(demand: Demand) {
   const ok = await confirm(
-    `Are you sure you want to delete ${getItemById(itemId)?.name} from ${station.value?.name}?`,
+    `Are you sure you want to delete ${getItemById(demand.itemId)?.name} from ${station.value?.name}?`,
     'Delete Demand'
   );
   if (!ok) return;
-  await DemandAPI.delete(stationId, itemId);
+  await DemandAPI.delete(stationId, demand.itemId);
   await fetchAll();
 }
 
@@ -171,19 +193,45 @@ async function saveChanges() {
   router.push({ name: 'Stations' });
 }
 
-function selectItem(id: number) {
-  selectedItemId.value = id;
-  if (id !== -1) {
-    const item = availableItems.value.find((i) => i.id === id);
-    itemFilter.value = item ? item.name : '';
+function onNewItemSelected(val: string | Item | null) {
+  if (typeof val === 'string') {
+    demandFormData.value.newItem = { name: val, value: 0 };
+  } else {
+    demandFormData.value.newItem = undefined;
   }
 }
 
-function onAutocompleteSelect(val: number | null) {
-  if (val === null) {
-    selectedItemId.value = null;
-    return;
+async function createAndSubmit() {
+  if (demandFormData.value.newItem && demandFormData.value.newItem.name.trim() !== '') {
+    const baseValue =
+      Math.round(
+        (demandFormData.value.newItem.value / (1 + demandFormData.value.demandLevel / 100)) * 100
+      ) / 100; // Rounded to 2 decimal places
+
+    const createdItem = await ItemAPI.create(demandFormData.value.newItem.name, baseValue);
+    if (createdItem && demandFormData) {
+      demandFormData.value.item = createdItem;
+    }
+    demandFormData.value.newItem = undefined;
   }
-  selectItem(val);
+  submitDemand();
+}
+
+const combobox = ref();
+
+function setNewItemMode() {
+  combobox.value?.blur();
+}
+
+const filteredItems = computed(() => {
+  const query = itemFilter.value.toLowerCase().trim();
+  return availableItems.value.filter((item) => item.name.toLowerCase().includes(query));
+});
+
+const noFilteredItems = computed(() => filteredItems.value.length === 0);
+function handleKeySelect(_: KeyboardEvent) {
+  if (noFilteredItems.value && itemFilter.value.trim()) {
+    setNewItemMode();
+  }
 }
 </script>
